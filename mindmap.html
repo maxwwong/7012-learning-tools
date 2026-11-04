@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Central Dogma Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a single-screen "wiring diagram" of the cell — map canvas left, explainer + animation stage right (stacked on phones) */
+:root{
+  --bg:#0e1022; --panel:#161936; --panel2:#1e2246; --line:#2d3266; --fg:#ecebf7; --muted:#a1a3c8;
+  --core:#ecebf7; --proc:#4fc4b8; --enz:#ffa53d; --tool:#a58cff; --virus:#ff8fb8; --uv:#7fd6ff; --red:#ff6b81; --green:#6fdca6;
+  --f-display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--f-body)}
+body{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding-block:18px 10px;max-width:1500px;margin:0 auto}
+h1{font:800 clamp(22px,3.6vw,30px)/1 var(--f-display);margin:0}
+header small{display:block;color:var(--muted);font:500 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
+a{color:var(--uv)}
+.back{font:600 14px var(--f-body);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--panel)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:1500px;margin:0 auto 12px}
+.bar .lab{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.chipbtn{background:var(--panel);border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:6px 12px;font:500 13px var(--f-body);cursor:pointer}
+.chipbtn:hover{border-color:var(--uv)}
+.chipbtn[aria-pressed="true"]{background:var(--panel2);border-color:var(--uv)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font:12px var(--f-mono);color:var(--muted);max-width:1500px;margin:0 auto 10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+.legend b{display:inline-block;width:22px;height:0;border-top:2px solid;margin-right:6px;vertical-align:3px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:16px;max-width:1500px;margin:0 auto;align-items:start}
+@media (max-width:1100px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.mapbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto;min-width:0}
+.mapbox svg{display:block;width:100%;min-width:860px;height:auto}
+.node{cursor:pointer}
+.node text{pointer-events:none;font-family:var(--f-body)}
+.node:focus{outline:none}
+.node:focus-visible .shape,.node:hover .shape{stroke:var(--uv);stroke-width:2.5}
+.node.sel .shape{stroke:#fff;stroke-width:3}
+.dim{opacity:.18;transition:opacity .25s}
+.edge{transition:opacity .25s,stroke-width .25s}
+.edge.hot{stroke-width:3.2!important;opacity:1}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 18px 20px;min-width:0;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+@media (max-width:1100px){.panel{position:static;max-height:none}}
+.kind{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
+.panel h2{font:800 24px/1.15 var(--f-display);margin:4px 0 8px;text-wrap:balance}
+.one{font-size:16px;margin:0 0 10px}
+.panel ul{margin:0 0 10px;padding-left:20px}.panel li{margin:4px 0}
+.panel h3{font:600 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--enz);margin:16px 0 6px}
+.exam{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px}
+.conns{display:flex;flex-wrap:wrap;gap:6px}
+.conn{background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:6px 10px;font:13px var(--f-body);cursor:pointer;text-align:left}
+.conn:hover{border-color:var(--uv)}
+.conn small{display:block;color:var(--muted);font-size:12px}
+.stage{background:var(--bg);border:1px solid var(--line);border-radius:10px;margin-top:6px;overflow:hidden}
+.stage svg{display:block;width:100%;height:auto}
+.stage text{font-family:var(--f-mono);fill:var(--fg);font-size:13px}
+.stage text.s{font-size:11px;fill:var(--muted)}
+.stage [data-s],.stage [data-m],.stage [data-o]{transition:opacity .55s ease,transform .9s cubic-bezier(.4,.1,.2,1),stroke-dashoffset 1.1s ease}
+.ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.btn{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:600 13px var(--f-body);cursor:pointer}
+.btn:hover{border-color:var(--uv)}.btn.primary{background:var(--enz);border-color:var(--enz);color:#2a1700}
+.btn:disabled{opacity:.4;cursor:default}
+.dots{display:flex;gap:5px;margin-left:auto}.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}.dots i.on{background:var(--uv)}
+.cap{margin-top:10px;font-size:15px;min-height:3.2em}
+.cap b{color:var(--uv)}
+.tourbar{display:none;background:var(--panel2);border:1px solid var(--uv);border-radius:10px;padding:10px 12px;margin-bottom:12px;gap:10px;align-items:center;flex-wrap:wrap}
+.tourbar.on{display:flex}
+.tourbar span{flex:1;min-width:180px;font-size:14px}
+.empty p{color:var(--muted)}
+code{font-family:var(--f-mono);color:var(--uv);font-size:.92em}
+@media (prefers-reduced-motion:reduce){.stage [data-s],.stage [data-m],.stage [data-o],.dim,.edge{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Central Dogma Map</h1><small>7.012 Exam II · how everything connects</small></div>
+  <a class="back" href="index.html">← Central Dogma Arcade</a>
+</header>
+<div class="bar" id="tours"><span class="lab">Guided tours</span></div>
+<div class="bar" id="filters"><span class="lab">Show</span></div>
+<div class="legend">
+  <span><i style="background:var(--core)"></i>Molecule</span><span><i style="background:var(--proc)"></i>Process</span><span><i style="background:var(--enz)"></i>Enzyme / machine</span><span><i style="background:var(--tool)"></i>Lab tool</span><span><i style="background:var(--virus)"></i>Viruses &amp; genomes</span>
+  <span><b style="border-color:var(--fg)"></b>information flow</span><span><b style="border-color:var(--enz)"></b>works in</span><span><b style="border-color:var(--tool);border-top-style:dashed"></b>lab tool borrows</span><span><b style="border-color:#5a608f"></b>related</span>
+</div>
+<div class="wrap">
+  <div class="mapbox"><svg id="map" viewBox="0 0 1300 860" role="img" aria-label="Mind map of molecular biology: DNA, RNA, protein, the processes between them, the enzymes, and the lab tools that borrow them"></svg></div>
+  <aside class="panel" id="panel" aria-live="polite"></aside>
+</div>
+
+<script>
+/* ===================== nodes & edges ===================== */
+const N=[
+ ["dna","DNA","core",220,370],["rna","RNA","core",650,370],["protein","Protein","core",1080,370],
+ ["replication","Replication","proc",220,205],["transcription","Transcription","proc",435,330],["rtproc","Reverse transcription","proc",435,415],["processing","RNA processing","proc",650,200],["translation","Translation","proc",865,370],["rnarep","RNA replication","proc",760,525],["regulation","Gene regulation","proc",435,215],["mutations","Mutations","proc",220,540],["repair","DNA repair","proc",70,450],
+ ["helicase","Helicase","enz",90,110],["topo","Topoisomerase","enz",240,62],["primase","Primase","enz",390,95],["dnapol","DNA polymerase","enz",80,195],["ligase","DNA ligase","enz",80,282],["rnapol","RNA polymerase","enz",560,265],["spliceosome","Spliceosome","enz",805,175],["ribosome","Ribosome","enz",865,262],["trna","tRNA","enz",955,470],["rt","Reverse transcriptase","enz",575,480],["telomerase","Telomerase","enz",390,515],["rdrp","RdRp","enz",900,580],["restriction","Restriction enzymes","enz",560,800],["taq","Taq polymerase","enz",150,625],["cas9","Cas9","enz",1160,615],
+ ["pcr","PCR","tool",150,712],["sanger","Sanger sequencing","tool",345,712],["gel","Gel electrophoresis","tool",345,800],["cloning","Cloning","tool",560,712],["cdna","cDNA & libraries","tool",770,712],["rnaseq","RNA-seq / scRNA-seq","tool",975,712],["crispr","CRISPR editing","tool",1160,712],["ngs","NGS (Illumina)","tool",150,800],
+ ["viruses","Viruses","virus",1090,535],["genome","Genomes & variation","virus",1080,190]
+].map(([id,label,kind,x,y])=>({id,label,kind,x,y}));
+const NODE=Object.fromEntries(N.map(n=>[n.id,n]));
+const E=[
+ ["replication","dna","flow","DNA → DNA: copies the genome"],["dna","transcription","flow","template for"],["transcription","rna","flow","makes"],["rna","translation","flow","mRNA is read by"],["translation","protein","flow","makes"],["rna","rtproc","flow","template for"],["rtproc","dna","flow","makes"],["rna","processing","flow","pre-mRNA → mature mRNA (eukaryotes)"],["rna","rnarep","flow","RNA → RNA (RNA viruses)"],
+ ["helicase","replication","works","unwinds the fork"],["topo","replication","works","relieves overwinding ahead of the fork"],["primase","replication","works","lays RNA primers"],["dnapol","replication","works","builds new DNA 5′→3′"],["ligase","replication","works","seals Okazaki fragments"],["telomerase","replication","works","rescues chromosome ends"],
+ ["rnapol","transcription","works","builds RNA from the template"],["regulation","transcription","works","turns it up or down"],["spliceosome","processing","works","removes introns"],["ribosome","translation","works","reads codons, makes peptide bonds"],["trna","translation","works","brings amino acids (anticodon pairs codon)"],["rt","rtproc","works","copies RNA → DNA"],["rdrp","rnarep","works","copies RNA → RNA"],
+ ["telomerase","rt","rel","is a reverse transcriptase"],["dnapol","repair","works","proofreads 3′→5′"],["repair","mutations","rel","prevents / creates"],["mutations","dna","rel","changes in"],["mutations","protein","rel","may change"],["primase","rnapol","rel","primase is a special RNA polymerase"],
+ ["viruses","rt","rel","retroviruses carry"],["viruses","rdrp","rel","−RNA viruses carry; +RNA viruses encode"],["viruses","rnarep","rel","RNA viruses use"],["viruses","ribosome","rel","use the host's"],
+ ["genome","mutations","rel","SNPs = common variants"],["genome","rt","rel","LINEs copy themselves with RT"],["genome","ngs","rel","read by"],["genome","regulation","rel","enhancers / CNEs"],
+ ["taq","pcr","borrow","heat-stable DNA polymerase"],["taq","dnapol","rel","is a DNA polymerase"],["dnapol","sanger","borrow","extends until a ddNTP"],["pcr","gel","rel","check products on"],["sanger","gel","rel","fragments sorted by size"],["ngs","sanger","rel","massively parallel cousin"],
+ ["restriction","cloning","borrow","cut vector + insert"],["ligase","cloning","borrow","joins insert into vector"],["restriction","viruses","rel","bacterial anti-phage defense"],
+ ["rt","cdna","borrow","copies mRNA into cDNA"],["processing","cdna","rel","cDNA has no introns"],["cdna","cloning","rel","cloned as a library"],["rnaseq","cdna","borrow","starts by making cDNA"],["rnaseq","ngs","rel","sequenced by"],["regulation","rnaseq","rel","measured by"],
+ ["cas9","crispr","borrow","the targeted cutter"],["crispr","repair","borrow","cell repairs the cut: NHEJ / HDR"],["cas9","viruses","rel","bacterial anti-phage immunity"],["crispr","regulation","rel","dCas9 switches genes on/off"]
+];
+/* ===================== animation scenes ===================== */
+const C={tpl:"#a1a3c8",new:"#7fd6ff",rna:"#ff8fb8",pr:"#ff6b81",aa:"#ffa53d",enz:"#6fdca6",vio:"#a58cff",dim:"#2d3266",fg:"#ecebf7",panel:"#161936",bg:"#0e1022"};
+const T=(x,y,s,o="")=>`<text x="${x}" y="${y}" text-anchor="middle" ${o}>${s}</text>`;
+const L=(x1,y1,x2,y2,c,w=3,o="")=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" ${o}/>`;
+const G=(inner,s,m,o)=>`<g${s!=null?` data-s="${s}"`:""}${m?` data-m="${m}"`:""}>${inner}</g>`;
+const DRAW=(d,c,w,o)=>`<path d="${d}" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="${o}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+const blob=(x,y,rx,ry,c,label)=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}" opacity=".88"/>`+T(x,y+4,label,`style="fill:#0b0d1d;font-weight:600"`);
+const SC={};
+SC.nuc={w:640,h:250,steps:[
+ "A new strand pairs with its template. Its last nucleotide has a free <b>3′-OH</b>, the only place a new nucleotide can attach.",
+ "An incoming <b>dNTP</b> (base + deoxyribose + 3 phosphates) base-pairs with the next template base (A–T or G–C).",
+ "The chain's <b>3′-OH attacks the α-phosphate</b> (the one nearest the sugar) of the incoming dNTP.",
+ "β + γ leave as <b>pyrophosphate (PPi)</b>. That releases the energy. The α-phosphate is now a <b>phosphodiester bond</b>, and the new nucleotide's 3′-OH is the new end.",
+ "Repeat. So DNA is always built <b>5′→3′</b> while the template is read <b>3′→5′</b>. No 3′-OH (no primer, or a ddNTP) means no extension."],
+ svg:()=>{let s=L(60,180,600,180,C.tpl,3)+T(40,184,"3′","class='s'")+T(620,184,"5′","class='s'");const tb="TACGGATCAG";for(let i=0;i<10;i++)s+=T(95+i*50,205,tb[i])+L(95+i*50,180,95+i*50,170,C.tpl,2);
+ const nb="ATGCCTAGTC";for(let i=0;i<4;i++)s+=`<rect x="${78+i*50}" y="128" width="34" height="34" rx="6" fill="#1b2c55" stroke="${C.new}"/>`+T(95+i*50,150,nb[i])+L(95+i*50,162,95+i*50,170,C.new,1.5,'stroke-dasharray="2 3"');
+ s+=L(60,110,258,110,C.new,3)+T(40,114,"5′","class='s'");
+ s+=G(T(278,104,"3′-OH",`style="fill:${C.new}"`),null,"0:0,0;3:50,0;4:100,0");
+ s+=G(`<rect x="278" y="128" width="34" height="34" rx="6" fill="#1b2c55" stroke="${C.new}"/>`+T(295,150,"C")+`<circle cx="295" cy="112" r="9" fill="#3a2a16" stroke="${C.aa}"/>`+T(295,116,"α",`style="font-size:11px"`),"1-","1:0,-70;2:0,0");
+ s+=G(L(295,103,295,90,C.aa,2)+`<circle cx="295" cy="82" r="9" fill="#3a2a16" stroke="${C.aa}"/>`+T(295,86,"β",`style="font-size:11px"`)+`<circle cx="295" cy="56" r="9" fill="#3a2a16" stroke="${C.aa}"/>`+T(295,60,"γ",`style="font-size:11px"`)+L(295,73,295,65,C.aa,2),"1-3","1:0,-70;2:0,0;3:90,-30");
+ s+=G(T(390,40,"PPi released",`style="fill:${C.aa}"`),"3");
+ s+=G(`<path d="M262 104 Q275 90 286 108" fill="none" stroke="${C.pr}" stroke-width="2.5"/>`+T(250,80,"attack",`style="fill:${C.pr}"`),"2");
+ s+=G(L(258,110,308,110,C.new,3),"3-");
+ s+=G(`<rect x="328" y="128" width="34" height="34" rx="6" fill="#1b2c55" stroke="${C.new}"/>`+T(345,150,"T")+L(308,110,358,110,C.new,3),"4");
+ s+=T(330,240,"template read 3′→5′  ·  new strand grows 5′→3′","class='s'");return s}};
+SC.rep={w:680,h:300,steps:[
+ "Replication starts at an <b>origin</b>. The parent double helix will be copied <b>semi-conservatively</b>: each daughter keeps one old strand.",
+ "<b>Helicase</b> (green) unwinds the strands at the fork. <b>Topoisomerase</b> (violet) cuts and reseals the backbone ahead of the fork to relieve overwinding.",
+ "<b>Primase</b> lays short <b>RNA primers</b> (red). DNA polymerase can't start a chain. It needs a 3′-OH.",
+ "<b>DNA polymerase</b> extends the top primer toward the fork, continuously. That's the <b>leading strand</b>: it grows 5′→3′ in the direction the fork moves.",
+ "On the bottom template, 5′→3′ points <b>away</b> from the fork, so synthesis happens in pieces: <b>Okazaki fragments</b>, each with its own primer. That's the <b>lagging strand</b>.",
+ "<b>DNA Pol I</b> replaces RNA primers with DNA. <b>DNA ligase</b> seals the nicks between fragments (phosphodiester bonds).",
+ "Result: two helices, each one old + one new strand. Error rate ~10⁻¹⁰ after <b>proofreading</b> (3′→5′ exonuclease) and <b>mismatch repair</b>."],
+ svg:()=>{const yT=x=>138+(x-305)*(-78/335),yB=x=>162+(x-305)*(78/335);let s="";
+ s+=G(L(40,130,640,130,C.tpl,3)+L(40,170,640,170,C.tpl,3)+[...Array(30)].map((_,i)=>L(50+i*20,133,50+i*20,167,C.dim,2)).join(""),"0");
+ s+=G(L(40,130,272,130,C.tpl,3)+L(40,170,272,170,C.tpl,3)+[...Array(12)].map((_,i)=>L(50+i*20,133,50+i*20,167,C.dim,2)).join("")+`<path d="M272 130 Q290 135 305 138 L640 60" fill="none" stroke="${C.tpl}" stroke-width="3"/><path d="M272 170 Q290 165 305 162 L640 240" fill="none" stroke="${C.tpl}" stroke-width="3"/>`,"1-");
+ s+=T(22,134,"5′","class='s'")+T(22,174,"3′","class='s'")+G(T(656,58,"3′","class='s'")+T(656,250,"5′","class='s'"),"1-")+G(T(656,134,"3′","class='s'")+T(656,174,"5′","class='s'"),"0");
+ s+=G(`<circle cx="288" cy="150" r="20" fill="${C.enz}" opacity=".9"/>`+T(288,154,"H",`style="fill:#0b0d1d;font-weight:600"`),"1-");
+ s+=G(`<rect x="136" y="137" width="26" height="26" rx="5" fill="${C.vio}"/>`+T(149,155,"T",`style="fill:#0b0d1d;font-weight:600"`),"1-");
+ const seg=(x1,x2,off,yf,c,w,o)=>`<path d="M${x1} ${(yf(x1)+off).toFixed(1)} L${x2} ${(yf(x2)+off).toFixed(1)}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round"${o||""}/>`;
+ s+=G(seg(612,632,16,yT,C.pr,6)+seg(380,398,-16,yB,C.pr,6),"2-4");
+ s+=`<path d="M612 ${(yT(612)+16).toFixed(1)} L350 ${(yT(350)+16).toFixed(1)}" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="0:1;3:0" fill="none" stroke="${C.new}" stroke-width="5" stroke-linecap="round"/>`;
+ s+=`<path d="M398 ${(yB(398)-16).toFixed(1)} L470 ${(yB(470)-16).toFixed(1)}" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="0:1;4:0" fill="none" stroke="${C.new}" stroke-width="5" stroke-linecap="round"/>`;
+ s+=G(seg(484,502,-16,yB,C.pr,6),"4")+`<path d="M502 ${(yB(502)-16).toFixed(1)} L590 ${(yB(590)-16).toFixed(1)}" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="0:1;4:0" fill="none" stroke="${C.new}" stroke-width="5" stroke-linecap="round"/>`;
+ s+=G(seg(612,632,16,yT,C.new,6)+seg(380,398,-16,yB,C.new,6)+seg(484,502,-16,yB,C.new,6)+seg(470,484,-16,yB,C.new,5),"5-");
+ s+=G(`<circle cx="477" cy="${(yB(477)-16).toFixed(1)}" r="9" fill="none" stroke="${C.enz}" stroke-width="2.5"/>`+T(477,yB(477)+12,"ligase","class='s'"),"5");
+ s+=G(T(520,26,"leading (continuous)",`style="fill:${C.new}"`),"3-")+G(T(470,284,"lagging (Okazaki fragments)",`style="fill:${C.new}"`),"4-");
+ s+=G(T(170,40,"← fork moves this way","class='s'"),"1-")+G(T(340,250,"ori","class='s'"),"0");return s}};
+SC.tx={w:680,h:250,steps:[
+ "A gene: <b>promoter</b> (shaded, where RNA polymerase binds; not transcribed) and the <b>start site</b> (arrow).",
+ "<b>RNA polymerase</b> binds the promoter. Its orientation decides which strand is the template and which way it travels.",
+ "It unwinds a small bubble and builds RNA <b>5′→3′</b> from NTPs, reading the <b>template strand 3′→5′</b>. <b>No primer needed.</b>",
+ "It keeps going through the gene. The RNA has the same sequence as the <b>coding strand</b>, with U instead of T.",
+ "At the terminator the RNA is released. In bacteria it can be translated right away; in eukaryotes it's processed first."],
+ svg:()=>{let s=`<rect x="80" y="104" width="90" height="52" rx="4" fill="#2d3266"/>`+L(40,110,640,110,C.tpl,3)+L(40,150,640,150,C.tpl,3);
+ s+=T(22,114,"5′","class='s'")+T(22,154,"3′","class='s'")+T(658,114,"3′","class='s'")+T(658,154,"5′","class='s'")+T(125,176,"promoter","class='s'")+T(610,176,"terminator","class='s'")+`<rect x="590" y="104" width="40" height="52" rx="4" fill="none" stroke="${C.pr}" stroke-dasharray="3 3"/>`;
+ s+=`<path d="M178 104 V86 H204" fill="none" stroke="${C.fg}" stroke-width="2"/><polygon points="210,86 201,81 201,91" fill="${C.fg}"/>`+T(96,200,"coding strand (top) · template strand (bottom)","class='s' text-anchor='start'");
+ s+=`<path d="M182 68 H585" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="0:1;2:0.62;3:0.12;4:0" fill="none" stroke="${C.rna}" stroke-width="4" stroke-linecap="round"/>`;
+ s+=G(T(170,64,"5′",`style="fill:${C.rna}"`),"2-");
+ s+=G(`<ellipse cx="125" cy="130" rx="46" ry="34" fill="${C.enz}" opacity=".82"/>`+T(125,134,"RNA pol",`style="fill:#0b0d1d;font-weight:600"`),"1-3","1:0,0;2:190,0;3:440,0");
+ s+=G(T(340,40,"mRNA 5′ … 3′  (= coding strand, U for T)",`style="fill:${C.rna}"`),"4");return s}};
+SC.proc={w:680,h:230,steps:[
+ "In eukaryotes, the first transcript is <b>pre-mRNA</b>: exons (amber) interrupted by introns (gray).",
+ "A <b>5′ cap</b> (methylated G, 5′–5′ linkage) is added. It's needed for stability, export, and ribosome binding.",
+ "The RNA is cut after <b>AAUAAA</b> and <b>poly(A) polymerase</b> adds ~200 A's: the <b>poly(A) tail</b>.",
+ "The <b>spliceosome</b> (RNA does the chemistry) grabs each intron (starts GU, ends AG)…",
+ "…cuts it out and joins the exons. Introns are discarded. Alternative splicing can join exons in different combinations.",
+ "The <b>mature mRNA</b> leaves the nucleus for the cytoplasm, where ribosomes translate it. A cDNA copy of this mRNA has no introns."],
+ svg:()=>{let s="";const ex=(x,w,lab)=>`<rect x="${x}" y="100" width="${w}" height="26" rx="4" fill="#5a3f22" stroke="${C.aa}"/>`+T(x+w/2,118,lab);
+ s+=G(ex(90,110,"exon 1"),null)+G(ex(300,100,"exon 2"),null,"0:0,0;4:-100,0")+G(ex(480,100,"exon 3"),null,"0:0,0;4:-180,0");
+ s+=G(L(200,113,300,113,"#6b6f9c",5)+T(250,98,"GU…AG","class='s'"),"0-4","0:0,0;3:0,-34")+G(L(400,113,480,113,"#6b6f9c",5),"0-4","0:0,0;3:0,-34");
+ s+=G(`<ellipse cx="250" cy="76" rx="58" ry="22" fill="${C.vio}" opacity=".7"/><ellipse cx="440" cy="76" rx="48" ry="22" fill="${C.vio}" opacity=".7"/>`,"3");
+ s+=G(`<circle cx="76" cy="113" r="11" fill="${C.rna}"/>`+T(76,150,"cap","class='s'"),"1-");
+ s+=G(T(612,118,"AAAAAAA",`style="fill:${C.rna}"`)+T(612,150,"poly(A)","class='s'"),"2-","0:0,0;4:-180,0");
+ s+=G(T(340,200,"mature mRNA → cytoplasm",`style="fill:${C.rna}"`),"5");s+=G(T(340,200,"nucleus","class='s'"),"0-4");return s}};
+SC.tl={w:680,h:300,steps:[
+ "The small ribosomal subunit finds the <b>start codon AUG</b>. The initiator tRNA (anticodon UAC) carries <b>Met</b>. Large subunit joins.",
+ "The next tRNA, with the anticodon that pairs <b>antiparallel</b> with codon 2 (GCU ↔ CGA), arrives carrying Ala.",
+ "The ribosome's <b>rRNA catalyzes a peptide bond</b>: Met is transferred onto Ala. The chain stays on the newest tRNA.",
+ "The ribosome shifts one codon toward the mRNA's <b>3′ end</b>. The empty tRNA leaves, and the tRNA for UUC (Phe) arrives.",
+ "This repeats codon by codon. The protein grows <b>N-terminus → C-terminus</b>.",
+ "At a <b>stop codon</b> (UAA, UAG, UGA) no tRNA matches. The chain is released and the ribosome falls off."],
+ svg:()=>{let s=L(30,240,650,240,C.rna,4)+T(18,244,"5′","class='s'")+T(664,244,"3′","class='s'");const cods=["AUG","GCU","UUC","UGG","UAA"];cods.forEach((c,i)=>{s+=T(140+i*95,262,c,`style="letter-spacing:3px"`)});
+ s+=G(`<ellipse cx="190" cy="170" rx="135" ry="78" fill="#24402f" opacity=".85"/><ellipse cx="190" cy="262" rx="120" ry="20" fill="#1d5a45" opacity=".6"/>`,"0-4","0:0,0;3:95,0;4:190,0");
+ const trna=(x,ac,aa,col)=>`<rect x="${x-11}" y="160" width="22" height="50" rx="8" fill="${C.vio}"/><rect x="${x-26}" y="174" width="52" height="12" rx="6" fill="${C.vio}"/>`+T(x,226,ac,`style="font-size:12px;letter-spacing:2px"`)+`<circle cx="${x}" cy="146" r="13" fill="${col}"/>`+T(x,150,aa,`style="fill:#0b0d1d;font-size:11px;font-weight:600"`);
+ s+=G(trna(140,"UAC","M",C.aa),"0-2","0:0,0;3:-60,-80");
+ s+=G(trna(235,"CGA","A",C.aa),"1-4","1:0,-90;2:0,0");
+ s+=G(`<circle cx="210" cy="120" r="13" fill="${C.aa}"/>`+T(210,124,"M",`style="fill:#0b0d1d;font-size:11px;font-weight:600"`)+L(222,126,232,136,C.aa,2),"2-4");
+ s+=G(trna(330,"AAG","F",C.aa),"3-4","3:0,-90;4:0,0");
+ s+=G(T(300,40,"N– Met – Ala – Phe – Trp … –C",`style="fill:${C.aa}"`),"4-");
+ s+=G(T(520,200,"stop: release",`style="fill:${C.pr}"`)+T(300,70,"protein released (N→C)",`style="fill:${C.aa}"`),"5");return s}};
+SC.rt={w:680,h:230,steps:[
+ "Start with an RNA, e.g., a mature mRNA with its poly(A) tail (or a retrovirus genome).",
+ "A primer binds. In the lab it's an <b>oligo(dT)</b> primer pairing with the poly(A) tail.",
+ "<b>Reverse transcriptase</b> builds a DNA strand complementary to the RNA, 5′→3′ (antiparallel, so it moves right → left here).",
+ "The RNA is removed and a second DNA strand is made, giving <b>double-stranded cDNA</b>.",
+ "cDNA = the gene's exons only: <b>no introns, no promoter</b>. Used for cDNA libraries, RNA-seq, and expressing eukaryotic genes in bacteria. HIV does the same thing, then <b>integrates</b> the DNA into the host genome."],
+ svg:()=>{let s="";s+=G(L(70,90,560,90,C.rna,4)+T(590,95,"AAAAAA",`style="fill:${C.rna}"`)+T(50,94,"5′","class='s'"),"0-2")+G(T(320,60,"mRNA",`style="fill:${C.rna}"`),"0-2");
+ s+=G(L(560,120,640,120,C.new,4)+T(600,140,"TTTTTT",`style="fill:${C.new}"`),"1-");
+ s+=`<path d="M560 120 L70 120" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="0:1;2:0;" fill="none" stroke="${C.new}" stroke-width="4" stroke-linecap="round"/>`;
+ s+=G(`<ellipse cx="540" cy="120" rx="40" ry="22" fill="${C.enz}" opacity=".85"/>`+T(540,124,"RT",`style="fill:#0b0d1d;font-weight:600"`),"2","2:-450,0");
+ s+=G(L(70,90,640,90,C.new,4)+T(340,60,"double-stranded cDNA",`style="fill:${C.new}"`),"3-");
+ s+=G(T(340,190,"exons only · no introns · no promoter",`style="fill:${C.aa}"`),"4");return s}};
+SC.pcr={w:680,h:260,steps:[
+ "Ingredients: template DNA, <b>two primers</b> flanking the target, dNTPs, heat-stable <b>Taq polymerase</b>. You must know the flanking sequence.",
+ "<b>Denature (~95 °C):</b> heat separates the strands. No helicase is needed.",
+ "<b>Anneal (~55 °C):</b> primers bind opposite strands, with their <b>3′ ends pointing toward each other</b>.",
+ "<b>Extend (~72 °C):</b> Taq extends each primer 5′→3′ across the target.",
+ "One cycle doubles the target: <b>1 → 2</b> copies.",
+ "Repeat ~30 cycles: 2 → 4 → 8 … = <b>2ⁿ</b> copies. Product ends are set by the primers. Check them on a gel."],
+ svg:()=>{let s="";s+=G(L(80,105,600,105,C.tpl,3)+T(60,109,"5′","class='s'")+T(620,109,"3′","class='s'"),null,"0:0,0;1:0,-40");
+ s+=G(L(80,145,600,145,C.tpl,3)+T(60,149,"3′","class='s'")+T(620,149,"5′","class='s'"),null,"0:0,0;1:0,40");
+ s+=G(`<rect x="250" y="100" width="180" height="50" fill="none" stroke="${C.aa}" stroke-dasharray="4 3"/>`+T(340,92,"target","class='s'"),"0");
+ s+=G(L(500,125,560,125,C.pr,6)+`<polygon points="496,125 506,119 506,131" fill="${C.pr}"/>`,"2-","0:0,0;2:0,-25")+G(L(120,125,180,125,C.pr,6)+`<polygon points="184,125 174,119 174,131" fill="${C.pr}"/>`,"2-","0:0,0;2:0,25");
+ s+=`<path d="M500 100 L120 100" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="0:1;3:0" fill="none" stroke="${C.new}" stroke-width="4"/>`+`<path d="M180 150 L560 150" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="0:1;3:0" fill="none" stroke="${C.new}" stroke-width="4"/>`;
+ s+=G(T(340,40,"95 °C denature",`style="fill:${C.pr}"`),"1")+G(T(340,40,"55 °C anneal",`style="fill:${C.uv||C.new}"`),"2")+G(T(340,40,"72 °C extend",`style="fill:${C.enz}"`),"3");
+ s+=G(T(340,230,"copies: 1",`style="font-size:16px"`),"0-3")+G(T(340,230,"copies: 2",`style="font-size:16px"`),"4")+G(T(340,230,"copies: 2 → 4 → 8 → … 2ⁿ (≈10⁹ after 30)",`style="font-size:16px;fill:${C.aa}"`),"5");return s}};
+SC.sanger={w:680,h:300,steps:[
+ "Template + <b>one primer</b> + DNA polymerase + all four dNTPs + a <b>trace of ddNTP</b>.",
+ "A ddNTP has <b>no 3′-OH</b>. Whenever polymerase happens to add one, that chain stops. You get fragments ending at every position.",
+ "Run the fragments on a gel (or capillary). <b>Smaller fragments run farther</b> (bottom).",
+ "Read <b>bottom → top</b>: that's the <b>newly made strand, 5′→3′</b>.",
+ "The template is the <b>reverse complement</b> of what you read. (Bottom band = the first base added after the primer.)"],
+ svg:()=>{let s="";const ns="AGTCAG";s+=G(L(40,60,330,60,C.tpl,3)+T(24,64,"3′","class='s'")+T(346,64,"5′","class='s'")+L(40,80,90,80,C.pr,5)+T(65,98,"primer","class='s'"),"0-1");
+ s+=G(ns.split("").map((b,i)=>L(40,120+i*22,100+i*38,120+i*22,C.new,4)+`<circle cx="${106+i*38}" cy="${120+i*22}" r="8" fill="${C.aa}"/>`+T(106+i*38,124+i*22,b,`style="fill:#0b0d1d;font-size:11px;font-weight:600"`)).join(""),"1");
+ const lanes="ACGT";s+=G(`<rect x="380" y="20" width="270" height="250" rx="8" fill="#141a3a" stroke="${C.dim}"/>`+[...lanes].map((l,i)=>T(420+i*62,44,"dd"+l,"class='s'")).join(""),"2-");
+ ns.split("").forEach((b,i)=>{s+=G(`<rect x="${400+lanes.indexOf(b)*62}" y="${240-i*32}" width="40" height="8" rx="2" fill="${C.aa}"/>`,"2-","2:0,-150;3:0,0")});
+ s+=G(T(200,160,"read ↑ : 5′-AGTCAG-3′ (new strand)",`style="fill:${C.new}"`),"3-")+G(T(200,190,"template: 5′-CTGACT-3′",`style="fill:${C.tpl}"`),"4");return s}};
+SC.gel={w:680,h:260,steps:["DNA samples go in wells at the <b>negative</b> end of an agarose gel.","DNA's phosphate backbone is negative, so it moves toward the <b>positive</b> electrode.","<b>Small fragments slip through the gel faster</b> and travel farther. Compare with a ladder of known sizes to read lengths."],
+ svg:()=>{let s=`<rect x="140" y="30" width="400" height="200" rx="8" fill="#141a3a" stroke="${C.dim}"/>`+T(340,22,"− (wells)",`style="fill:${C.pr}"`)+T(340,252,"+",`style="fill:${C.enz};font-size:16px"`);[200,300,400].forEach(x=>s+=`<rect x="${x}" y="40" width="44" height="7" fill="#05060f"/>`);
+ const bands=[[222,60,"ladder"],[222,100],[222,140],[222,175],[322,85],[322,170],[422,120]];bands.forEach(([x,y],i)=>{s+=G(`<rect x="${x-20}" y="${y}" width="40" height="7" rx="2" fill="${C.aa}"/>`,"0-","0:0,${-y+40};1:0,${-(y-40)/2};2:0,0".replace("${-y+40}",-y+40).replace("${-(y-40)/2}",-(y-40)/2))});
+ s+=G(T(470,190,"small →",`style="fill:${C.aa}"`)+T(470,75,"large →",`style="fill:${C.aa}"`),"2");return s}};
+SC.clone={w:680,h:300,steps:[
+ "A <b>vector</b> (plasmid: ori + antibiotic-resistance marker + cloning site) and your <b>insert</b> (gene).",
+ "Cut both with the <b>same restriction enzyme(s)</b>. They leave matching <b>sticky ends</b> (e.g., EcoRI → AATT overhangs).",
+ "The insert's ends base-pair with the vector's ends…",
+ "…and <b>DNA ligase</b> seals the backbone with phosphodiester bonds. Recombinant plasmid!",
+ "<b>Transform</b> E. coli. Only a few cells take up a plasmid.",
+ "Plate on the <b>antibiotic</b>: only cells with the plasmid survive. Each colony is a clone carrying one plasmid. With two different enzymes, the insert can only go in one orientation (directional cloning)."],
+ svg:()=>{let s="";s+=G(`<circle cx="200" cy="150" r="80" fill="none" stroke="${C.tpl}" stroke-width="6"/>`,"0")+G(`<path d="M182 71 A80 80 0 1 0 218 71" fill="none" stroke="${C.tpl}" stroke-width="6"/>`,"1-3")+G(`<path d="M150 88 A80 80 0 0 0 250 212" fill="none" stroke="${C.aa}" stroke-width="10" opacity=".7"/>`+T(110,240,"AmpR","class='s'"),"0-3");
+ s+=G(T(200,155,"vector","class='s'"),"0-3");
+ s+=G(L(420,70,560,70,C.aa,8)+T(490,56,"insert (gene)","class='s'"),"0-2","0:0,0;2:-290,0");
+ s+=G(T(195,58,"✂",`style="font-size:18px;fill:${C.pr}"`)+T(490,104,"✂ ✂",`style="font-size:18px;fill:${C.pr}"`)+T(330,110,"AATT sticky ends",`style="fill:${C.pr}"`),"1");
+ s+=G(L(182,70,218,70,C.aa,8)+`<circle cx="182" cy="70" r="6" fill="${C.enz}"/><circle cx="218" cy="70" r="6" fill="${C.enz}"/>`+T(200,36,"ligase seals",`style="fill:${C.enz}"`),"3");
+ s+=G(`<rect x="380" y="120" width="230" height="110" rx="55" fill="#1d3b2e" stroke="${C.enz}"/>`+`<circle cx="495" cy="175" r="22" fill="none" stroke="${C.tpl}" stroke-width="3"/>`+L(486,154,504,154,C.aa,4)+T(495,250,"E. coli","class='s'"),"4");
+ s+=G(`<circle cx="200" cy="150" r="110" fill="#141a3a" stroke="${C.dim}"/>`+T(200,160,"+ ampicillin","class='s'")+[[160,110],[240,120],[200,200],[150,180],[250,190]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="9" fill="#e9e4c8"/>`).join("")+T(470,150,"only plasmid-carrying",`style="fill:${C.enz}"`)+T(470,172,"cells form colonies",`style="fill:${C.enz}"`),"5");return s}};
+SC.crispr={w:680,h:300,steps:[
+ "Target DNA. Cas9 can only cut where its target sits next to a short <b>PAM</b> (amber).",
+ "<b>Cas9 + guide RNA</b> scans DNA and grips a PAM. (This is borrowed from bacterial immunity against phages.)",
+ "The ~20-nt <b>guide (spacer)</b> base-pairs with the target strand. A match triggers Cas9.",
+ "Cas9 makes a <b>double-strand break</b>.",
+ "<b>NHEJ:</b> the cell glues the ends back, often with small <b>indels</b>, which cause a frameshift and a <b>knockout</b>. No template needed.",
+ "<b>HDR:</b> give the cell a <b>donor template</b> (desired sequence + homology arms) and it copies it into the break: a <b>precise edit or insertion</b>."],
+ svg:()=>{let s="";const left=`<g data-m="0:0,0;3:-16,0;4:0,0;5:-16,0">${L(30,140,330,140,C.tpl,4)+L(30,180,330,180,C.tpl,4)}</g>`,right=`<g data-m="0:0,0;3:16,0;4:0,0;5:16,0">${L(345,140,650,140,C.tpl,4)+L(345,180,650,180,C.tpl,4)}</g>`;s+=left+right;
+ s+=`<rect x="420" y="128" width="40" height="24" rx="3" fill="${C.aa}" data-s="0-3"/>`+G(L(330,140,345,140,C.tpl,4)+L(330,180,345,180,C.tpl,4),"0-2");
+ s+=G(`<rect x="210" y="70" width="270" height="170" rx="70" fill="#1f4747" opacity=".7" stroke="#4fc4b8"/>`+T(250,230,"Cas9",`style="fill:#4fc4b8"`),"1-3","1:0,-120;2:0,0");
+ s+=G(L(250,160,410,160,C.rna,4)+[...Array(10)].map((_,i)=>L(258+i*16,163,258+i*16,176,C.rna,1)).join("")+`<path d="M250 160 C210 150 210 100 250 96" fill="none" stroke="${C.new}" stroke-width="4"/>`,"2-3");
+ s+=G(T(337,118,"✂",`style="font-size:22px;fill:${C.pr}"`),"3");
+ s+=G(L(330,140,345,140,C.tpl,4)+L(330,180,345,180,C.tpl,4)+`<rect x="324" y="132" width="26" height="56" fill="none" stroke="${C.pr}" stroke-dasharray="3 3"/>`+T(337,226,"indel → frameshift → knockout",`style="fill:${C.pr}"`),"4");
+ s+=G(`<rect x="200" y="40" width="280" height="22" rx="4" fill="#1b2c55" stroke="${C.new}"/>`+`<rect x="300" y="40" width="80" height="22" fill="${C.enz}" opacity=".8"/>`+T(340,30,"donor: homology arm · NEW · homology arm","class='s'")+`<rect x="300" y="132" width="80" height="56" fill="${C.enz}" opacity=".35"/>`+T(340,226,"precise edit / insertion (HDR)",`style="fill:${C.enz}"`),"5");return s}};
+SC.reg={w:680,h:240,steps:[
+ "Gene regulation decides <b>when and how much</b> a gene is transcribed. The DNA sequence doesn't change.",
+ "<b>Repressor ON</b> (e.g., glucose): a repressor sits near the promoter and <b>blocks RNA polymerase</b> → no transcription.",
+ "<b>Induced</b> (e.g., methanol): the repressor lets go, and an <b>activator</b> binds an enhancer and <b>recruits RNA polymerase</b> → transcription.",
+ "Enhancers can be far away (even 1 Mb, like the Shh limb enhancer). DNA <b>loops</b> to bring them to the promoter. <b>Open chromatin</b> also helps; closed chromatin keeps genes off."],
+ svg:()=>{let s=L(30,150,650,150,C.tpl,5)+`<rect x="250" y="140" width="80" height="20" fill="#2d3266"/>`+T(290,180,"promoter","class='s'")+`<rect x="340" y="140" width="30" height="20" fill="none" stroke="${C.pr}"/>`+`<rect x="390" y="140" width="220" height="20" fill="#5a3f22" stroke="${C.aa}"/>`+T(500,180,"gene","class='s'")+`<rect x="80" y="140" width="60" height="20" fill="none" stroke="#4fc4b8"/>`+T(110,180,"enhancer","class='s'");
+ s+=G(blob(355,122,24,16,C.pr,"R"),"1");s+=G(blob(290,80,40,22,C.enz,"RNA pol")+T(290,52,"blocked","class='s'"),"1");
+ s+=G(blob(110,122,26,16,"#4fc4b8","A"),"2-");s+=G(blob(290,122,40,22,C.enz,"RNA pol"),"2-","2:0,0;3:0,0");
+ s+=`<path d="M400 112 H600" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" data-o="0:1;2:0" fill="none" stroke="${C.rna}" stroke-width="4"/>`;
+ s+=G(`<path d="M140 140 C170 60 240 60 270 112" fill="none" stroke="#4fc4b8" stroke-width="2" stroke-dasharray="4 3"/>`+T(200,48,"DNA loops",`style="fill:#4fc4b8"`),"3");return s}};
+SC.mut={w:680,h:260,steps:[
+ "Normal: the reading frame is set by AUG and read in triplets: <b>AUG GCA UGG AAA UAA</b> → Met-Ala-Trp-Lys-stop.",
+ "<b>Synonymous (silent):</b> GCA → GCC. Still Ala. The DNA changed, the protein didn't.",
+ "<b>Missense:</b> GCA → GAA. Ala → Glu. One amino acid changed.",
+ "<b>Nonsense:</b> UGG → UAG = stop. The protein is truncated.",
+ "<b>Frameshift:</b> insert one base (G) after AUG. Every downstream triplet changes. 3-base indels don't shift the frame."],
+ svg:()=>{const row=(cods,aas,hi,y)=>cods.map((c,i)=>`<text x="${110+i*110}" y="${y}" text-anchor="middle" style="letter-spacing:3px;font-size:16px;${i===hi?`fill:${C.pr}`:""}">${c}</text>`+`<text x="${110+i*110}" y="${y+30}" text-anchor="middle" style="fill:${C.aa}">${aas[i]}</text>`).join("");let s="";
+ s+=T(340,40,"mRNA 5′ → 3′","class='s'");
+ s+=G(row(["AUG","GCA","UGG","AAA","UAA"],["Met","Ala","Trp","Lys","stop"],-1,110),"0");
+ s+=G(row(["AUG","GCC","UGG","AAA","UAA"],["Met","Ala","Trp","Lys","stop"],1,110),"1");
+ s+=G(row(["AUG","GAA","UGG","AAA","UAA"],["Met","Glu","Trp","Lys","stop"],1,110),"2");
+ s+=G(row(["AUG","GCA","UAG","",""],["Met","Ala","STOP","",""],2,110),"3");
+ s+=G(row(["AUG","GGC","AUG","GAA","AUA"],["Met","Gly","Met","Glu","Ile…"],1,110)+T(340,200,"+G inserted → frame shifted",`style="fill:${C.pr}"`),"4");return s}};
+SC.virus={w:680,h:280,steps:[
+ "Viruses use the host's ribosomes, but some break the usual DNA → RNA rule.",
+ "<b>+RNA virus:</b> the genome <i>is</i> an mRNA. Ribosomes translate it immediately (including its own RdRp), so naked RNA is infectious.",
+ "<b>−RNA virus:</b> the genome is the complement of mRNA. Cells have no RdRp, so the virus <b>packages its own RdRp</b> to make +RNA first.",
+ "<b>Retrovirus (HIV):</b> RNA genome + <b>reverse transcriptase</b> → DNA → <b>integrates</b> into the host chromosome → transcribed by host RNA pol."],
+ svg:()=>{let s="";const lane=(y,lab,parts,show)=>G(T(70,y+5,lab,`style="fill:${C.rna}"`)+parts.map(([x,t,c])=>`<rect x="${x-58}" y="${y-16}" width="116" height="30" rx="6" fill="#1e2246" stroke="${c}"/>`+T(x,y+4,t,`style="font-size:12px"`)).join("")+parts.slice(1).map(([x],i)=>L(parts[i][0]+60,y,x-62,y,C.tpl,2)+`<polygon points="${x-60},${y} ${x-68},${y-5} ${x-68},${y+5}" fill="${C.tpl}"/>`).join(""),show);
+ s+=lane(70,"+RNA",[[200,"+RNA genome",C.rna],[350,"ribosome",C.enz],[500,"proteins + RdRp",C.aa]],"1-");
+ s+=lane(150,"−RNA",[[200,"−RNA + RdRp",C.rna],[350,"+RNA (mRNA)",C.rna],[500,"proteins",C.aa]],"2-");
+ s+=lane(230,"retro",[[200,"RNA + RT",C.rna],[330,"DNA copy",C.new],[460,"integrated",C.tpl],[590,"transcribed",C.rna]],"3-");return s}};
+SC.scrna={w:680,h:260,steps:[
+ "Bulk RNA-seq grinds a tissue into a smoothie: you see the average, not individual cell types.",
+ "scRNA-seq puts <b>one cell + one bead</b> in each oil droplet.",
+ "Every oligo on a bead: <b>PCR handle · cell barcode</b> (same on the whole bead) · <b>UMI</b> (unique per molecule) · <b>poly(T)</b> (grabs mRNA).",
+ "The cell lyses, mRNA sticks to poly(T), and reverse transcriptase makes barcoded cDNA. Pool, sequence, and <b>group reads by barcode</b> to get one expression profile per cell."],
+ svg:()=>{let s="";s+=G(`<rect x="200" y="60" width="280" height="150" rx="20" fill="#3b2b4a"/>`+T(340,140,"tissue → average","class='s'"),"0");
+ [[150,130],[340,130],[530,130]].forEach(([x,y],i)=>{s+=G(`<circle cx="${x}" cy="${y}" r="62" fill="#14243f" stroke="${C.new}"/>`+`<circle cx="${x-20}" cy="${y}" r="18" fill="${C.enz}" opacity=".8"/>`+`<circle cx="${x+22}" cy="${y+4}" r="14" fill="${C.vio}"/>`,"1-")});
+ s+=G(`<rect x="60" y="215" width="80" height="20" fill="#5a6bb0"/><rect x="140" y="215" width="140" height="20" fill="${C.aa}"/><rect x="280" y="215" width="100" height="20" fill="${C.rna}"/><rect x="380" y="215" width="150" height="20" fill="${C.enz}"/>`+T(100,252,"handle","class='s'")+T(210,252,"cell barcode","class='s'")+T(330,252,"UMI","class='s'")+T(455,252,"poly(T)","class='s'"),"2-");
+ s+=G(T(340,40,"reads grouped by barcode → 1 profile per cell",`style="fill:${C.aa}"`),"3");return s}};
+SC.repair={w:680,h:220,steps:["<b>Proofreading:</b> DNA polymerase's 3′→5′ exonuclease backs up and removes a wrong base it just added (10⁻³ → 10⁻⁶).","<b>Mismatch repair:</b> after replication, enzymes spot the bulge, cut out a stretch of the <b>new</b> strand, and resynthesize it (→ 10⁻¹⁰). Defects → hereditary colon cancer.","<b>Double-strand breaks</b> (like Cas9's): <b>NHEJ</b> joins the ends fast but messy (indels); <b>HDR</b> copies a homologous template precisely."],
+ svg:()=>{let s=L(60,90,620,90,C.tpl,4)+L(60,130,620,130,C.new,4);s+=G(`<circle cx="400" cy="130" r="10" fill="${C.pr}"/>`+T(400,165,"wrong base at 3′ end → removed","class='s'"),"0");
+ s+=G(`<rect x="300" y="118" width="160" height="24" fill="none" stroke="${C.aa}" stroke-dasharray="4 3"/>`+T(380,165,"excise new-strand stretch, refill","class='s'"),"1");
+ s+=G(`<rect x="330" y="80" width="20" height="60" fill="${C.bg}"/>`+T(340,190,"NHEJ (indels) or HDR (template)",`style="fill:${C.aa}"`),"2");return s}};
+SC.genome={w:680,h:200,steps:["The human genome: ~3.2 billion bp, ~21,000 protein-coding genes. Only <b>~1.5%</b> codes for protein. <b>&gt;50%</b> comes from transposons (LINEs, SINEs…). ~5–6% is conserved (most of it regulatory)."],
+ svg:()=>{let s=`<rect x="40" y="80" width="600" height="40" fill="#2d3266"/>`+`<rect x="40" y="80" width="9" height="40" fill="${C.aa}"/>`+`<rect x="49" y="80" width="27" height="40" fill="#4fc4b8"/>`+`<rect x="330" y="80" width="310" height="40" fill="${C.vio}" opacity=".7"/>`;s+=T(60,64,"coding 1.5%",`style="fill:${C.aa};text-anchor:start"`)+T(140,150,"other conserved ~4% (regulatory)",`style="fill:#4fc4b8"`)+T(485,150,"transposon-derived >50%",`style="fill:${C.vio}"`);return s}};
+
+/* ===================== node content ===================== */
+const INFO={
+dna:{one:"The long-term information store: two antiparallel strands of nucleotides held together by A–T and G–C base pairs.",b:["Nucleotide = deoxyribose (2′-H) + base + phosphate(s). Purines A, G (2 rings); pyrimidines C, T (1 ring).","Within a strand: <b>phosphodiester bonds</b> (covalent, the backbone). Between strands: <b>hydrogen bonds</b> (A–T 2, G–C 3).","Strands run 5′→3′ in opposite directions. Write sequences 5′→3′. Complementary strand = complement, then reverse.","Genes can sit on either strand. The promoter's orientation picks which strand is the template.","Chargaff: in dsDNA A = T and G = C. If not, the genome is single-stranded."],exam:"New nucleotides attach to the 3′-OH via the α-phosphate (PPi leaves). That's why everything is made 5′→3′ and needs a primer.",scene:"nuc"},
+rna:{one:"The working copy: single-stranded, ribose (2′-OH), uses U instead of T.",b:["<b>mRNA</b> carries the code; <b>tRNA</b> is the adapter (anticodon ↔ codon); <b>rRNA</b> is the ribosome's catalyst; <b>lncRNAs</b> act as RNA scaffolds.","Made by RNA polymerase from a DNA template, 5′→3′, no primer needed.","mRNA = coding-strand sequence with U. It's complementary to the template.","The 2′-OH makes RNA reactive and short-lived: good for messages, bad for storage.","Eukaryotic mRNA gets a cap, a poly(A) tail, and splicing before it leaves the nucleus."],exam:"Which strand matches the mRNA? The coding (non-template) strand, with T→U."},
+protein:{one:"The workers: chains of amino acids built N → C by ribosomes, folded into 3D structures that do the cell's jobs.",b:["Sequence comes from mRNA codons (triplets, starting at AUG).","Mutations can change it: silent, missense, nonsense, frameshift.","Amount depends on transcription, mRNA stability, translation, and protein degradation.","Many proteins here are enzymes: helicase, polymerases, ligase, Cas9, restriction enzymes…"],exam:"Low protein with normal mRNA → translation or protein stability. Low mRNA → transcription."},
+replication:{one:"DNA → DNA. The genome is copied semi-conservatively before every cell division.",b:["Starts at origins (1 in bacteria, many in eukaryotes). Two forks move apart.","Needs template, primer (3′-OH), dNTPs, and DNA polymerase.","<b>Leading</b> strand: continuous, toward the fork. <b>Lagging</b>: Okazaki fragments, away from the fork.","Meselson–Stahl (¹⁵N → ¹⁴N): gen 1 one hybrid band, gen 2 hybrid + light.","Linear chromosome ends shorten each round, which telomerase fixes."],exam:"Lagging = fork movement and synthesis in opposite directions. Each strand is leading at one fork and lagging at the other.",scene:"rep"},
+transcription:{one:"DNA → RNA. RNA polymerase copies one strand of a gene into RNA.",b:["RNA pol binds the <b>promoter</b> (not transcribed) and starts at +1.","Reads the template 3′→5′ and builds RNA 5′→3′ from NTPs. No primer, no proofreading.","Product matches the coding strand (U for T).","Controlled by transcription factors (activators, repressors), enhancers, and chromatin."],exam:"Find the template: it's the strand complementary to the mRNA, read 3′→5′ moving away from the promoter.",scene:"tx"},
+rtproc:{one:"RNA → DNA, the reverse of transcription, done by reverse transcriptase.",b:["Retroviruses (HIV) copy their RNA genome to DNA and integrate it.","Telomerase uses its own RNA template to extend chromosome ends.","LINE transposons copy themselves this way (and SINEs borrow LINE enzymes).","In the lab: mRNA → <b>cDNA</b> for libraries, RNA-seq, and expressing eukaryotic genes in bacteria."],exam:"cDNA has no introns and no promoter.",scene:"rt"},
+processing:{one:"Eukaryotes turn pre-mRNA into mature mRNA in the nucleus.",b:["<b>5′ cap</b> (methyl-G, 5′–5′): stability, export, ribosome binding.","<b>Poly(A) tail</b>: added after cleavage at AAUAAA; stability.","<b>Splicing</b>: spliceosome removes introns (GU…AG) and joins exons.","Alternative splicing: one gene → several proteins.","Bacteria don't do any of this and can't splice."],exam:"Mutation in an intron → usually no protein change. 3 bp in an exon → one amino acid missing. 1 bp → frameshift.",scene:"proc"},
+translation:{one:"RNA → protein. Ribosomes read mRNA codons and tRNAs bring matching amino acids.",b:["Starts at the first AUG (Met), reads 5′→3′ in triplets, stops at UAA/UAG/UGA.","Anticodon pairs <b>antiparallel</b> with the codon. Anticodon 5′→3′ = reverse complement of the codon.","rRNA catalyzes peptide bonds. Protein grows N → C.","The code is redundant (several codons per amino acid) but unambiguous, and nearly universal."],exam:"Count amino acids from AUG = 1. Written answers often want the step named: translation.",scene:"tl"},
+rnarep:{one:"RNA → RNA, done by RNA-dependent RNA polymerase (RdRp). Only RNA viruses do this.",b:["Host cells have no RdRp.","+RNA viruses translate their genome to make RdRp.","−RNA viruses must bring RdRp inside the virion."],exam:"Naked +RNA genome is infectious; naked −RNA is not.",scene:"virus"},
+regulation:{one:"Deciding which genes are on, when, and how much. It's why one genome makes many cell types.",b:["Repressors block RNA polymerase; activators recruit it.","Enhancers can act from far away by DNA looping.","Open chromatin = accessible; closed = mostly off.","Post-transcriptional: splicing choices and mRNA stability.","Measured by RNA-seq / scRNA-seq. Can be manipulated with dCas9."],exam:"Delete the repressor's site → always on. Delete the activator's site → can't be induced.",scene:"reg"},
+mutations:{one:"Changes in DNA sequence, from replication errors or damage.",b:["Substitutions: silent, missense, nonsense.","Indels: not a multiple of 3 → frameshift; 3n → in-frame.","Intron changes are usually silent (unless they hit splice sites). Promoter changes alter amount, not sequence.","~30 new mutations per human generation. SNPs are common variants."],exam:"Base-pair notation: rewrite the coding-strand codon, convert to mRNA, then look it up.",scene:"mut"},
+repair:{one:"Fixing mistakes and breaks.",b:["Proofreading: polymerase 3′→5′ exonuclease.","Mismatch repair: replaces part of the new strand.","NHEJ: joins broken ends (indels). HDR: copies a homologous template (precise)."],exam:"CRISPR knockout uses NHEJ; precise edit or insertion uses HDR + donor template.",scene:"repair"},
+helicase:{one:"Unzips the double helix at the replication fork by breaking base-pair H-bonds.",b:["Sits at the fork junction, ahead of both new strands.","Without it, the fork never opens and neither strand is copied.","PCR and Sanger don't need it: heat separates the strands."],exam:"Helicase-dead → both leading and lagging stop.",scene:"rep",start:1},
+topo:{one:"Relieves the overwinding (supercoiling) that builds up ahead of the fork.",b:["Cuts the backbone, lets it unwind, reseals. Changes topology, not sequence.","Without it, tension builds and the fork stalls."],exam:"Works ahead of the fork, in the still-double-stranded DNA.",scene:"rep",start:1},
+primase:{one:"A special RNA polymerase that lays down short RNA primers so DNA polymerase has a 3′-OH to extend.",b:["Leading strand: one primer per fork. Lagging: one per Okazaki fragment.","Uses rNTPs. PCR and Sanger replace it with synthetic DNA primers.","Primers are later swapped for DNA (Pol I)."],exam:"\"Primase started at ___\": the primer's 5′ end.",scene:"rep",start:2},
+dnapol:{one:"Builds DNA 5′→3′ by adding dNTPs to a 3′-OH, reading the template 3′→5′.",b:["Needs template, primer, dNTPs (+ Mg²⁺).","Proofreads with a 3′→5′ exonuclease.","Pol III does most copying; Pol I replaces primers (Cairns mutant).","Borrowed by PCR (Taq) and Sanger."],exam:"Missing 3′-OH (no primer, ddNTP) means no extension.",scene:"nuc"},
+ligase:{one:"Seals nicks by forming a phosphodiester bond between adjacent DNA pieces.",b:["In cells: joins Okazaki fragments (lagging strand).","In the lab: joins insert to vector (sticky or blunt ends).","Ligase defect → fragments pile up on the lagging strand."],exam:"Digest first, then ligate. Ligase needs compatible ends.",scene:"clone",start:3},
+rnapol:{one:"Transcribes genes: builds RNA 5′→3′ from NTPs using a DNA template.",b:["Binds promoters (helped by activators, blocked by repressors).","No primer needed, no proofreading.","Eukaryotes: Pol I → rRNA, Pol II → mRNA and lncRNA, Pol III → tRNA."],exam:"Gene inserted backward relative to the promoter → RNA pol makes the wrong strand's RNA.",scene:"tx",start:1},
+spliceosome:{one:"RNA–protein machine that cuts introns out of pre-mRNA and joins the exons.",b:["Its RNA does the catalysis.","Recognizes GU…AG intron ends; signals can differ between species.","Absent in bacteria."],exam:"Moving a gene between organisms with different splicing signals → use cDNA.",scene:"proc",start:3},
+ribosome:{one:"Reads mRNA codons and makes peptide bonds. rRNA + proteins, and the rRNA is the catalyst.",b:["Starts at AUG, moves 5′→3′, releases at a stop codon.","Weak ribosome binding → low protein despite normal mRNA.","Viruses use the host's ribosomes."],exam:"Ribosome problems are translation-step failures.",scene:"tl"},
+trna:{one:"Adapter molecule: an anticodon on one end, its amino acid on the other.",b:["Anticodon pairs antiparallel with the codon.","Codon 5′-UCA-3′ ↔ anticodon 5′-UGA-3′."],exam:"Anticodon 5′→3′ = reverse complement of the codon (RNA letters).",scene:"tl",start:1},
+rt:{one:"Copies RNA into DNA.",b:["Retroviruses (HIV) carry it.","Telomerase is a reverse transcriptase with its own RNA template.","LINE elements encode one.","Lab use: making cDNA from mRNA (oligo-dT primer)."],exam:"Not involved in normal chromosome replication.",scene:"rt",start:2},
+telomerase:{one:"Extends chromosome ends (TTAGGG repeats) using its own RNA template.",b:["End-replication problem: the last lagging-strand primer can't be replaced, so ends shorten.","Active in germline, stem, and cancer cells.","Bacteria don't need it: their chromosomes are circular."],exam:"Telomerase = reverse transcriptase."},
+rdrp:{one:"RNA-dependent RNA polymerase: copies RNA from an RNA template. Viral.",b:["Host cells have none.","−RNA viruses package it; +RNA viruses make it after infecting."],exam:"Why −RNA genomes alone aren't infectious.",scene:"virus",start:2},
+restriction:{one:"Bacterial enzymes that cut DNA at specific palindromic sites (anti-phage defense).",b:["Break phosphodiester bonds on both strands.","Sticky ends (5′ or 3′ overhangs) or blunt ends.","Each enzyme has its own site (EcoRI GAATTC, BamHI GGATCC…).","n cuts: linear → n+1 fragments; circular → n."],exam:"Directional cloning: two enzymes, flanking only, unique in the vector, 5′ end of the gene next to the promoter.",scene:"clone",start:1},
+taq:{one:"A heat-stable DNA polymerase from a hot-spring bacterium. That's what makes PCR cycling possible.",b:["Survives 95 °C denaturing every cycle.","Same chemistry as any DNA polymerase."],exam:"PCR needs Taq, template, dNTPs, two primers. No primase, no helicase.",scene:"pcr"},
+cas9:{one:"Guide-RNA-directed DNA cutter, borrowed from bacterial CRISPR immunity.",b:["Needs a guide matching the target and a PAM next to it.","Makes a double-strand break.","dCas9 (dead): binds without cutting, used to switch genes on or off."],exam:"No PAM or a guide mismatch → no cut. Gene expression and reading frame don't matter.",scene:"crispr",start:1},
+pcr:{one:"Amplifies a specific DNA region exponentially in a tube.",b:["Denature → anneal → extend, ~30 cycles, 2ⁿ copies.","Primers bind opposite strands, 3′ ends pointing inward.","Forward = top strand's 5′ end; reverse = reverse complement of the top's 3′ end."],exam:"You need to know the flanking sequence to design primers.",scene:"pcr"},
+sanger:{one:"Reads a DNA sequence using chain-terminating ddNTPs.",b:["Template + one primer + polymerase + dNTPs + a trace of ddNTP (one per tube in the classic method).","Fragments end at every position; separate by size.","Read bottom → top = new strand 5′→3′. Template = reverse complement."],exam:"Matching a gel: bottom band = first base after the primer.",scene:"sanger"},
+gel:{one:"Separates DNA fragments by size.",b:["DNA is negative and runs toward +.","Smaller = farther. Compare to a ladder.","Used to check digests, PCR products, and (historically) Sanger reads."],exam:"Fragment sizes in a digest add up to the total length.",scene:"gel"},
+cloning:{one:"Putting a gene into a plasmid so bacteria copy it for you.",b:["Vector needs: ori, selectable marker, cloning site (+ promoter for expression).","Digest → ligate → transform E. coli → select → purify plasmid → (move to production host) → induce.","Insert inside a marker gene inactivates it (plate on the other antibiotic)."],exam:"Order of steps, enzyme pair choice, and which antibiotic to plate on.",scene:"clone"},
+cdna:{one:"DNA copies of mRNA made by reverse transcriptase, cloned as a cDNA library.",b:["Contains only expressed genes from that tissue, with no introns.","Use it to express eukaryotic genes in bacteria or in hosts with different splicing.","Genomic libraries contain everything (introns, non-coding DNA) and are the same in every tissue."],exam:"Compare cDNA libraries from two tissues to show tissue-specific expression.",scene:"rt"},
+rnaseq:{one:"Counts mRNAs to measure gene expression. scRNA-seq does it cell by cell.",b:["mRNA (poly(T) capture) → cDNA → sequence → map → count.","Bulk = average over all cells. Single-cell = barcodes per cell, UMIs per molecule.","rRNA and tRNA are mostly missing (no poly(A))."],exam:"A read split across 200 bp in the genome spans an intron (exon–exon junction).",scene:"scrna"},
+crispr:{one:"Programmable genome editing: Cas9 + guide RNA cut a chosen site, and the cell's repair does the edit.",b:["Knockout: NHEJ indels.","Precise edit or insertion: HDR + donor template with homology arms.","Pooled screens: guides depleted (essential/protective genes) or enriched (genes whose loss helps survival)."],exam:"Recessive disease → edit one allele. Guide must match the sequence present now.",scene:"crispr"},
+ngs:{one:"Massively parallel sequencing (Illumina): millions of fragments read at once.",b:["Clusters of amplified fragments; one reversible-terminator base added per cycle; read by color.","Reads the new strand 5′→3′ (template = reverse complement).","Better than Sanger for whole genomes; Sanger is best for checking one clone."],exam:"Why NGS for a genome? Parallelism. (It still needs library prep.)"},
+viruses:{one:"Obligate parasites: a genome (DNA or RNA) in a protein coat. They use host ribosomes.",b:["+RNA: genome is mRNA. −RNA: carries RdRp. Retrovirus: carries RT, integrates.","Overlapping reading frames pack information.","Bacteria defend with restriction enzymes and CRISPR."],exam:"Which naked genome can start an infection? +RNA.",scene:"virus"},
+genome:{one:"The whole DNA sequence of an organism and how it varies.",b:["Human: ~3.2 Gb, ~21,000 genes, ~1.5% coding, >50% transposon-derived.","Conserved sequence → function (selection removes changes).","SNPs, linkage, GWAS: markers near genes track traits.","Homology predicts function of new genes. Gene families and pseudogenes come from duplication."],exam:"Soybean-style statements: mostly non-coding; conserved regions have FEWER mutations.",scene:"genome"}};
+
+/* ===================== map rendering ===================== */
+const KCOL={core:"var(--core)",proc:"var(--proc)",enz:"var(--enz)",tool:"var(--tool)",virus:"var(--virus)"};
+const KNAME={core:"Molecule",proc:"Process",enz:"Enzyme / machine",tool:"Lab tool",virus:"Viruses & genomes"};
+const map=document.getElementById("map");
+function nodeSize(n){if(n.kind==="core")return{r:58};const w=Math.max(96,n.label.length*8.2+26);return{w,h:n.kind==="proc"?36:30}}
+function edgeEnd(n){return[n.x,n.y]}
+function drawMap(){let s=`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="context-stroke" stroke-width="1.6"/></marker></defs>`;
+ s+=`<text x="40" y="660" style="fill:#5a608f;font:600 12px var(--f-mono);letter-spacing:.08em">LAB TOOLS: EACH ONE BORROWS CELL MACHINERY</text>`+`<line x1="40" y1="668" x2="1260" y2="668" stroke="#2d3266" stroke-dasharray="4 6"/>`;
+ E.forEach(([a,b,t,lab],i)=>{const A=NODE[a],B=NODE[b];const [x1,y1]=edgeEnd(A),[x2,y2]=edgeEnd(B);const mx=(x1+x2)/2,my=(y1+y2)/2;const dx=x2-x1,dy=y2-y1;const bend=t==="flow"?0:0.12;const cx=mx-dy*bend,cy=my+dx*bend;
+  const st=t==="flow"?`stroke="#ecebf7" stroke-width="3" marker-end="url(#ar)"`:t==="works"?`stroke="#ffa53d" stroke-width="1.6" opacity=".7"`:t==="borrow"?`stroke="#a58cff" stroke-width="1.8" stroke-dasharray="6 4" opacity=".85"`:`stroke="#5a608f" stroke-width="1.3" opacity=".8"`;
+  s+=`<path class="edge" data-e="${i}" data-a="${a}" data-b="${b}" d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" ${st}/>`});
+ N.forEach(n=>{const sz=nodeSize(n);const col=KCOL[n.kind];let shape;
+  if(n.kind==="core")shape=`<circle class="shape" cx="${n.x}" cy="${n.y}" r="${sz.r}" fill="#1e2246" stroke="${col}" stroke-width="2"/>`+`<text x="${n.x}" y="${n.y+8}" text-anchor="middle" style="fill:${col};font:800 24px var(--f-display)">${n.label}</text>`;
+  else shape=`<rect class="shape" x="${n.x-sz.w/2}" y="${n.y-sz.h/2}" width="${sz.w}" height="${sz.h}" rx="${sz.h/2}" fill="#161936" stroke="${col}" stroke-width="${n.kind==="proc"?2:1.5}"/>`+`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" style="fill:${col};font:${n.kind==="proc"?600:500} ${n.kind==="proc"?14:13}px var(--f-body)">${n.label}</text>`;
+  s+=`<g class="node" data-id="${n.id}" data-kind="${n.kind}" tabindex="0" role="button" aria-label="${n.label}">${shape}</g>`});
+ map.innerHTML=s}
+drawMap();
+
+/* ===================== selection, panel, animation ===================== */
+const panel=document.getElementById("panel");let SEL=null,STEP=0,TIMER=null,SCN=null,TOUR=null,TI=0;
+function neighbors(id){const out=[];E.forEach(([a,b,t,lab],i)=>{if(a===id)out.push({id:b,lab,t,dir:"→"});else if(b===id)out.push({id:a,lab,t,dir:"←"})});return out}
+function select(id,opts={}){if(!NODE[id])return;SEL=id;const nb=new Set(neighbors(id).map(x=>x.id).concat([id]));
+ map.querySelectorAll(".node").forEach(g=>{g.classList.toggle("sel",g.dataset.id===id);g.classList.toggle("dim",!nb.has(g.dataset.id)&&!isFilteredOut(g.dataset.kind)?true:(!nb.has(g.dataset.id)))});
+ map.querySelectorAll(".edge").forEach(p=>{const on=p.dataset.a===id||p.dataset.b===id;p.classList.toggle("hot",on);p.classList.toggle("dim",!on)});
+ renderPanel(id,opts.step);try{history.replaceState(null,"","#"+id)}catch(e){}
+ if(opts.scroll&&window.innerWidth<1100)panel.scrollIntoView({behavior:"smooth",block:"start"})}
+function clearSel(){SEL=null;map.querySelectorAll(".node,.edge").forEach(x=>x.classList.remove("dim","sel","hot"));applyFilter();renderEmpty()}
+function renderEmpty(){stopPlay();panel.innerHTML=`<div class="empty"><div class="kind" style="color:var(--uv)">How to use this</div><h2>Click anything on the map</h2><p>The top row is the central dogma: <b>DNA → RNA → protein</b>, with each process on the arrow between them. Enzymes (amber) attach to the processes they work in. Lab tools (violet, bottom) connect with dashed lines to the cell machinery they borrow.</p><p>Each node has a short explanation, its connections (click to jump), and most have a <b>step-by-step animation</b>.</p><p>New to this? Start with the tour <b>Gene → protein</b>.</p></div>`}
+function renderPanel(id,startStep){stopPlay();const n=NODE[id],info=INFO[id]||{one:"",b:[]};const nb=neighbors(id);
+ let h="";if(TOUR){h+=`<div class="tourbar on"><span><b>Tour: ${TOUR.name}</b>, stop ${TI+1} of ${TOUR.ids.length}</span><button class="btn" id="tprev" ${TI===0?"disabled":""}>← Back</button><button class="btn primary" id="tnext">${TI===TOUR.ids.length-1?"Finish":"Next stop →"}</button><button class="btn" id="tend">Exit</button></div>`}
+ h+=`<div class="kind" style="color:${KCOL[n.kind]}">${KNAME[n.kind]}</div><h2>${n.label}</h2><p class="one">${info.one}</p>`;
+ if(info.scene){h+=`<div class="stage" id="stage"></div><div class="ctrl"><button class="btn" id="sprev">◀ Back</button><button class="btn primary" id="splay">▶ Play</button><button class="btn" id="snext">Next ▶</button><div class="dots" id="sdots"></div></div><div class="cap" id="scap"></div>`}
+ h+=`<h3>Key points</h3><ul>${info.b.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+ if(info.exam)h+=`<h3>Exam angle</h3><div class="exam">${info.exam}</div>`;
+ h+=`<h3>Connected to</h3><div class="conns">${nb.map(x=>`<button class="conn" data-go="${x.id}">${NODE[x.id].label}<small>${x.dir==="→"?"":""}${x.lab}</small></button>`).join("")}</div>`;
+ panel.innerHTML=h;panel.scrollTop=0;
+ if(info.scene){SCN=SC[info.scene];document.getElementById("stage").innerHTML=`<svg viewBox="0 0 ${SCN.w} ${SCN.h}" role="img" aria-label="Animation: ${n.label}">${SCN.svg()}</svg>`;STEP=Math.min(startStep??info.start??0,SCN.steps.length-1);applyStep(true)}else SCN=null}
+function parseRange(r,step){return r.split(",").some(p=>{if(p.includes("-")){const [a,b]=p.split("-");return step>=+a&&(b===""||step<=+b)}return +p===step})}
+function lastKey(spec,step){let v=null;spec.split(";").filter(Boolean).forEach(kv=>{const [k,val]=kv.split(":");if(+k<=step)v=val});return v}
+function applyStep(instant){const st=document.getElementById("stage");if(!st||!SCN)return;
+ st.querySelectorAll("[data-s],[data-m],[data-o]").forEach(el=>{if(instant)el.style.transition="none";
+  if(el.dataset.s!=null)el.style.opacity=parseRange(el.dataset.s,STEP)?1:0;
+  if(el.dataset.m){const v=lastKey(el.dataset.m,STEP);const [x,y]=(v||"0,0").split(",").map(Number);el.style.transform=`translate(${x}px,${y}px)`}
+  if(el.dataset.o){const v=lastKey(el.dataset.o,STEP);el.style.strokeDashoffset=v==null?1:v}
+  if(instant){void el.getBoundingClientRect();el.style.transition=""}});
+ document.getElementById("scap").innerHTML=`<b>${STEP+1}/${SCN.steps.length}</b> · ${SCN.steps[STEP]}`;
+ document.getElementById("sdots").innerHTML=SCN.steps.map((_,i)=>`<i class="${i===STEP?"on":""}"></i>`).join("");
+ document.getElementById("sprev").disabled=STEP===0;document.getElementById("snext").disabled=STEP===SCN.steps.length-1}
+function go(d){if(!SCN)return;STEP=Math.max(0,Math.min(SCN.steps.length-1,STEP+d));applyStep(false)}
+function stopPlay(){if(TIMER){clearInterval(TIMER);TIMER=null}const b=document.getElementById("splay");if(b)b.textContent="▶ Play"}
+function togglePlay(){if(TIMER){stopPlay();return}if(STEP===SCN.steps.length-1){STEP=0;applyStep(true)}document.getElementById("splay").textContent="❚❚ Pause";TIMER=setInterval(()=>{if(STEP>=SCN.steps.length-1){stopPlay();return}go(1)},3200)}
+
+/* ===================== filters & tours ===================== */
+const FILT={core:true,proc:true,enz:true,tool:true,virus:true};const isFilteredOut=k=>!FILT[k];
+function applyFilter(){map.querySelectorAll(".node").forEach(g=>{if(!SEL)g.classList.toggle("dim",!FILT[g.dataset.kind])});map.querySelectorAll(".edge").forEach(p=>{if(!SEL)p.classList.toggle("dim",!(FILT[NODE[p.dataset.a].kind]&&FILT[NODE[p.dataset.b].kind]))})}
+const fb=document.getElementById("filters");Object.keys(KNAME).forEach(k=>{const b=document.createElement("button");b.className="chipbtn";b.setAttribute("aria-pressed","true");b.textContent=KNAME[k];b.onclick=()=>{FILT[k]=!FILT[k];b.setAttribute("aria-pressed",FILT[k]);if(SEL)clearSel();applyFilter()};fb.appendChild(b)});
+const TOURS=[{name:"Gene → protein",ids:["dna","transcription","rnapol","regulation","processing","translation","trna","protein","mutations"]},{name:"How cells copy DNA",ids:["dna","replication","helicase","topo","primase","dnapol","ligase","repair","telomerase"]},{name:"Lab tools borrow cell machinery",ids:["restriction","cloning","pcr","sanger","gel","cdna","rnaseq","ngs","crispr"]},{name:"Viruses & reverse flow",ids:["viruses","rnarep","rdrp","rtproc","rt","genome"]}];
+const tb=document.getElementById("tours");TOURS.forEach((t,i)=>{const b=document.createElement("button");b.className="chipbtn";b.textContent=t.name;b.onclick=()=>{TOUR=t;TI=0;select(t.ids[0],{scroll:true})};tb.appendChild(b)});
+
+/* ===================== events ===================== */
+map.addEventListener("click",e=>{const g=e.target.closest(".node");if(g){if(TOUR&&!TOUR.ids.includes(g.dataset.id))TOUR=null;select(g.dataset.id,{scroll:true})}else if(SEL&&!TOUR)clearSel()});
+map.addEventListener("keydown",e=>{const g=e.target.closest(".node");if(g&&(e.key==="Enter"||e.key===" ")){e.preventDefault();select(g.dataset.id,{scroll:true})}});
+panel.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+ if(t.dataset.go){if(TOUR&&!TOUR.ids.includes(t.dataset.go))TOUR=null;select(t.dataset.go);return}
+ if(t.id==="snext")return go(1);if(t.id==="sprev")return go(-1);if(t.id==="splay")return togglePlay();
+ if(t.id==="tnext"){if(TI<TOUR.ids.length-1){TI++;select(TOUR.ids[TI])}else{TOUR=null;clearSel()}return}
+ if(t.id==="tprev"){TI=Math.max(0,TI-1);select(TOUR.ids[TI]);return}
+ if(t.id==="tend"){TOUR=null;select(SEL);return}});
+document.addEventListener("keydown",e=>{if(!SCN||/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;if(e.key==="ArrowRight")go(1);if(e.key==="ArrowLeft")go(-1)});
+const h0=location.hash.slice(1);if(NODE[h0])select(h0);else renderEmpty();
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(NODE[h]&&h!==SEL)select(h)});
+</script>
+</body>
+</html>
