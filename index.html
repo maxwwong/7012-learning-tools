@@ -1,4 +1,8 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Central Dogma Arcade</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -112,9 +116,22 @@ mark{background:var(--band);color:#2a1700;border-radius:2px}
 .codon th{color:var(--band);font-size:15px}
 .codon .stop{color:var(--bad)} .codon .start{color:var(--good)}
 .ctoggle{margin-top:14px}
+.dg{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px;margin:0 0 14px;overflow-x:auto}
+.dg svg{display:block;width:100%;min-width:520px;height:auto}
+.dg text{font-family:var(--f-mono);font-size:14px;fill:var(--fg)}
+.dg text.mt{fill:var(--muted);font-size:12px}
+.hs{fill:transparent;stroke:transparent;stroke-width:2.5;cursor:pointer;pointer-events:all;transition:fill .15s}
+.hs:hover,.hs:focus{stroke:var(--uv);fill:rgba(127,214,255,.13);outline:none}
+.hs.right{stroke:var(--good);fill:rgba(98,227,165,.28)}
+.hs.wrong{stroke:var(--bad);fill:rgba(255,112,136,.28)}
+.dg.answered .hs{cursor:default}
+.dg.answered .hs:not(.right):not(.wrong){stroke:transparent;fill:transparent}
+.taphint{font:12px var(--f-mono);color:var(--muted);margin:-6px 0 12px}
 @media (max-width:520px){.qtext{font-size:17px}.card{padding:16px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+</head>
+<body>
 
 <div class="wrap">
 <header>
@@ -133,7 +150,7 @@ mark{background:var(--band);color:#2a1700;border-radius:2px}
 <main>
 <section id="v-play">
   <h2>Pick a run</h2>
-  <p class="sub">Concept questions cover every topic. Drills generate fresh sequences every time, so you can't memorize them.</p>
+  <p class="sub">Concept questions cover every topic. Drills generate fresh sequences every time, so you can't memorize them. Diagram questions have you tap parts of recitation-style drawings.</p>
   <div class="modes" id="modes"></div>
   <h2>Units</h2>
   <p class="sub">Each band lights up as you master items. Mastered means your last answer was right and you've gotten it right at least twice, or right with no misses. For a drill, it means 3 right in a row.</p>
@@ -141,6 +158,9 @@ mark{background:var(--band);color:#2a1700;border-radius:2px}
   <h2 style="margin-top:28px">Skill lab</h2>
   <p class="sub">Endless practice on one problem type, with a new sequence every time.</p>
   <div class="skills" id="skills"></div>
+  <h2 style="margin-top:28px">Diagram lab</h2>
+  <p class="sub">Recitation-style drawings. Tap the part the question asks for. Many redraw themselves each time (shuffled panels, new gels, new base pairs).</p>
+  <div class="skills" id="dlab"></div>
   <div style="margin-top:28px"><button class="btn ghost" id="reset">Reset all progress</button> <span id="resetConfirm" hidden><span class="hint" style="display:inline">Erase everything?</span> <button class="btn" id="resetYes">Yes, erase</button> <button class="btn ghost" id="resetNo">Cancel</button></span></div>
 </section>
 
@@ -699,6 +719,291 @@ sanger:{u:"seq",name:"Sanger products",make(){const base=pick("ACGT");let t,news
 pcr:{u:"seq",name:"PCR copy math",make(){const k=pick([1,1,2,3,4,10]);const n=3+rnd(8);const ans=k*2**n;return{type:"text",q:`You start with <b>${k}</b> double-stranded template molecule${k>1?"s":""} and run <b>${n}</b> ideal PCR cycles. How many double-stranded copies of the target?`,hint:"Enter a number.",check(v){return{ok:parseInt(String(v).replace(/[^0-9]/g,""),10)===ans}},answer:String(ans),e:`${k} × 2^${n} = ${ans}. Each cycle doubles the number.`}}}
 };
 
+/* ---------------- tap-the-diagram generators ---------------- */
+const DC={line:"#a1a3c8",fg:"#ecebf7",amber:"#ffa53d",uv:"#7fd6ff",pink:"#ff8fb8",green:"#6fdca6",violet:"#a58cff",red:"#ff6b81",teal:"#4fc4b8",slate:"#26305e",dim:"#2d3266",bg:"#0e1022",panel:"#161936"};
+let HSN=0;
+const SV=(w,h,body)=>`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Diagram: tap a region to answer">${body}</svg>`;
+const hsA=id=>`class="hs" data-hit="${id}" tabindex="0" role="button" aria-label="Region ${++HSN}"`;
+const hR=(id,x,y,w,h)=>`<rect ${hsA(id)} x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>`;
+const hC=(id,cx,cy,r)=>`<circle ${hsA(id)} cx="${cx}" cy="${cy}" r="${r}"/>`;
+const hP=(id,pts)=>`<polygon ${hsA(id)} points="${pts.map(p=>p.map(v=>(+v).toFixed(1)).join(",")).join(" ")}"/>`;
+function bandPts(x1,y1,x2,y2,hw){const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),nx=-dy/L*hw,ny=dx/L*hw;return[[x1+nx,y1+ny],[x2+nx,y2+ny],[x2-nx,y2-ny],[x1-nx,y1-ny]]}
+const TX=(x,y,s,cls="",anchor="middle")=>`<text x="${x}" y="${y}" text-anchor="${anchor}"${cls?` class="${cls}"`:""}>${s}</text>`;
+const LN=(x1,y1,x2,y2,col=DC.line,w=2,extra="")=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}" stroke-linecap="round" ${extra}/>`;
+const PG=(pts,fill,stroke=DC.line,w=2)=>`<polygon points="${pts.map(p=>p.join(",")).join(" ")}" fill="${fill}" stroke="${stroke}" stroke-width="${w}"/>`;
+const atomN=(x,y,s="N")=>`<circle cx="${x}" cy="${y}" r="10" fill="${DC.bg}"/>`+TX(x,y+5,s);
+const pentPts=(cx,cy,r)=>Array.from({length:5},(_,k)=>{const a=(-90+72*k)*Math.PI/180;return[+(cx+r*Math.cos(a)).toFixed(1),+(cy+r*Math.sin(a)).toFixed(1)]});
+function tapGen(u,name,build){return{u,name,diag:true,make(){HSN=0;const d=build();const t=pick(d.targets);return{type:"tap",q:t.q,svg:d.svg,correct:t.c,e:t.e,labels:d.labels,answer:d.labels[t.c[0]]+(t.c.length>1?" (any of the green ones)":"")}}}}
+
+const DIAGS={
+d_nuc:tapGen("struct","Nucleotide anatomy",()=>{let b="";
+ b+=LN(94,150,126,150)+LN(174,150,206,150)+LN(254,150,286,150);
+ for(const x of [70,150,230])b+=LN(x,126,x,108)+TX(x,100,"O⁻","mt")+`<circle cx="${x}" cy="150" r="24" fill="#3a2a16" stroke="${DC.amber}" stroke-width="2"/>`+TX(x,156,"P");
+ b+=TX(310,156,"CH₂")+LN(334,150,348,150);
+ const O=[400,105],C1=[452,150],C2=[432,210],C3=[368,210],C4=[348,150];
+ b+=PG([C4,O,C1,C2,C3],"none");
+ b+=`<circle cx="400" cy="105" r="11" fill="${DC.bg}"/>`+TX(400,110,"O");
+ for(const p of [C1,C2,C3,C4])b+=`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${DC.line}"/>`;
+ b+=LN(368,210,368,238)+TX(368,258,"OH")+LN(432,210,432,238)+TX(432,258,"OH");
+ b+=LN(452,150,548,196);
+ const C6=[625,132],N1=[658,151],C2b=[658,189],N3=[625,208],C4b=[592,189],C5=[592,151],N7=[558,138],C8=[542,170],N9=[558,202];
+ b+=PG([C6,N1,C2b,N3,C4b,C5],"none")+PG([C5,N7,C8,N9,C4b],"none");
+ b+=LN(625,132,625,106)+TX(625,96,"NH₂");
+ for(const p of [N1,N3,N7,N9])b+=atomN(p[0],p[1]);
+ b+=hC("gamma",70,150,28)+hC("beta",150,150,28)+hC("alpha",230,150,28)+hR("c5",290,134,42,30)+hC("ringO",400,105,15)+hC("c4",348,150,14)+hC("c1",452,150,14)+hC("c2",432,210,13)+hC("c3",368,210,13)+hR("oh3",348,243,40,24)+hR("oh2",412,243,40,24)+hR("nh2",603,78,44,26)+hC("n1",658,151,13)+hC("n3",625,208,13)+hC("n7",558,138,13)+hC("n9",558,202,13);
+ return{svg:SV(700,280,b),labels:{alpha:"the α-phosphate",beta:"the β-phosphate",gamma:"the γ-phosphate",c5:"the 5′ carbon (CH₂)",ringO:"the ring oxygen",c1:"the 1′ carbon",c2:"the 2′ carbon",c3:"the 3′ carbon",c4:"the 4′ carbon",oh2:"the 2′-OH",oh3:"the 3′-OH",nh2:"adenine's N6 amino group",n1:"adenine's N1",n3:"adenine's N3",n7:"adenine's N7",n9:"adenine's N9"},targets:[
+ {c:["alpha"],q:"Tap the phosphorus that forms the new bond with a growing chain's 3′-OH when this nucleotide is added.",e:"The α-phosphate (the one attached to the sugar) stays in the backbone. β and γ leave together as pyrophosphate."},
+ {c:["beta","gamma"],q:"Tap a phosphate that gets released as pyrophosphate (PPi) when this nucleotide is added to a chain.",e:"β + γ leave together. Breaking the α–β bond powers the reaction."},
+ {c:["oh2"],q:"This is ATP. Tap the group you'd change to turn it into the DNA monomer dATP.",e:"Replace the 2′-OH with H to get deoxyribose. The 2′ carbon is the ring carbon right next to the one holding the base."},
+ {c:["oh3"],q:"Once this nucleotide is in a chain, tap the group the NEXT nucleotide gets attached to.",e:"The 3′-OH attacks the incoming nucleotide's α-phosphate. Count from the base carbon (1′) away from the ring O: 2′, then 3′."},
+ {c:["c5"],q:"Tap the 5′ carbon.",e:"The 5′ carbon is the CH₂ outside the ring. It carries the phosphates."},
+ {c:["c1"],q:"Tap the 1′ carbon.",e:"1′ is the ring carbon bonded to the base."},
+ {c:["c3"],q:"Tap the 3′ carbon.",e:"Start at 1′ (base carbon) and go around away from the ring oxygen: 2′, 3′. The 3′ carbon carries the 3′-OH."},
+ {c:["c4"],q:"Tap the 4′ carbon.",e:"4′ is the ring carbon bonded to the 5′ CH₂, beside the ring oxygen."},
+ {c:["nh2","n1"],q:"Tap an atom on adenine that hydrogen-bonds with thymine in a Watson–Crick pair.",e:"Adenine's N6 amino group (H donor) and N1 (H acceptor) make A–T's two H-bonds. Adenine has no oxygens."},
+ {c:["n9"],q:"Tap the base nitrogen that is bonded to the sugar.",e:"In purines, N9 bonds to the sugar's 1′ carbon."}]}}),
+
+d_sugars:tapGen("seq","rNTP vs dNTP vs ddNTP",()=>{let b="";const types=shuffle([["rNTP","OH","OH"],["dNTP","H","OH"],["ddNTP","H","H"]]);
+ types.forEach(([id,s2,s3],i)=>{const x=10+i*230;b+=`<rect x="${x}" y="10" width="220" height="210" rx="10" fill="${DC.panel}" stroke="${DC.dim}"/>`;
+  const O=[x+110,70],C1=[x+152,105],C2=[x+136,155],C3=[x+84,155],C4=[x+68,105];
+  b+=PG([C4,O,C1,C2,C3],"none")+`<circle cx="${O[0]}" cy="70" r="10" fill="${DC.panel}"/>`+TX(O[0],75,"O");
+  b+=LN(C4[0],C4[1],x+46,76)+TX(x+38,66,"PPP")+LN(C1[0],C1[1],x+176,92)+TX(x+190,92,"B");
+  b+=LN(C3[0],155,C3[0],176)+TX(C3[0],196,s3)+LN(C2[0],155,C2[0],176)+TX(C2[0],196,s2);
+  b+=hR(id,x,10,220,210)});
+ return{svg:SV(700,230,b),labels:{rNTP:"the ribonucleotide (2′-OH and 3′-OH)",dNTP:"the deoxyribonucleotide (2′-H, 3′-OH)",ddNTP:"the dideoxynucleotide (2′-H, 3′-H)"},targets:[
+ {c:["rNTP"],q:"Each panel shows a nucleotide's sugar (PPP = triphosphate, B = base). Tap the monomer RNA polymerase uses.",e:"RNA uses ribose: OH at both 2′ (bottom right, next to the base carbon) and 3′ (bottom left)."},
+ {c:["dNTP"],q:"Tap the monomer DNA polymerase normally adds. (PPP = triphosphate, B = base.)",e:"A dNTP has H at 2′ but keeps the 3′-OH, so the chain can keep growing."},
+ {c:["ddNTP"],q:"Tap the Sanger chain terminator. (PPP = triphosphate, B = base.)",e:"A ddNTP has H at both 2′ and 3′. No 3′-OH means nothing can be added after it."},
+ {c:["ddNTP"],q:"Tap the nucleotide that can be added to a DNA chain but blocks any further addition.",e:"Without a 3′-OH, there's nothing to attack the next nucleotide's α-phosphate."}]}}),
+
+d_ladder:tapGen("struct","Double-helix ladder",()=>{let b="";const pairs=shuffle(["AT","TA","GC","CG"]).slice(0,3);if(!pairs.some(p=>p.includes("A")))pairs[0]="AT";if(!pairs.some(p=>p.includes("G")))pairs[1]="GC";
+ const pur=x=>x==="A"||x==="G";const ys=[70,150,230];
+ b+=LN(110,30,110,250)+LN(530,40,530,270);
+ for(const y of [30,110,190])b+=`<circle cx="110" cy="${y}" r="13" fill="#3a2a16" stroke="${DC.amber}" stroke-width="2"/>`+TX(110,y+5,"P");
+ for(const y of [110,190,270])b+=`<circle cx="530" cy="${y}" r="13" fill="#3a2a16" stroke="${DC.amber}" stroke-width="2"/>`+TX(530,y+5,"P");
+ b+=TX(110,276,"OH")+TX(530,30,"OH");
+ for(const y of ys){b+=PG(pentPts(110,y,16),"#3b3f7a")+PG(pentPts(530,y,16),"#3b3f7a")}
+ pairs.forEach((p,i)=>{const y=ys[i],L=p[0],Rb=p[1];
+  const lx=pur(L)?170:235;b+=LN(126,y,lx,y)+`<rect x="${lx}" y="${y-15}" width="${300-lx}" height="30" rx="4" fill="${DC.slate}" stroke="${DC.uv}"/>`+(pur(L)?LN(235,y-15,235,y+15,DC.uv,1):"")+TX((lx+300)/2,y+5,L);
+  const rx=pur(Rb)?470:405;b+=LN(rx,y,514,y)+`<rect x="340" y="${y-15}" width="${rx-340}" height="30" rx="4" fill="${DC.slate}" stroke="${DC.uv}"/>`+(pur(Rb)?LN(405,y-15,405,y+15,DC.uv,1):"")+TX((340+rx)/2,y+5,Rb);
+  const offs=p.includes("A")?[-6,6]:[-9,0,9];for(const o of offs)b+=LN(303,y+o,337,y+o,DC.pink,2,'stroke-dasharray="3 4"')});
+ const tg={pur:[],pyr:[],hb3:[],hb2:[]};
+ pairs.forEach((p,i)=>{const y=ys[i];b+=hR("bL"+i,pur(p[0])?168:233,y-17,pur(p[0])?134:69,34)+hR("bR"+i,338,y-17,pur(p[1])?134:69,34)+hR("hb"+i,301,y-16,38,32);(pur(p[0])?tg.pur:tg.pyr).push("bL"+i);(pur(p[1])?tg.pur:tg.pyr).push("bR"+i);(p.includes("A")?tg.hb2:tg.hb3).push("hb"+i)});
+ b+=hC("pL0",110,30,16)+hC("pL1",110,110,16)+hC("pL2",110,190,16)+hC("pR1",530,110,16)+hC("pR2",530,190,16)+hC("pR3",530,270,16)+hR("lend3",92,262,36,22)+hR("rend3",512,16,36,22);
+ ys.forEach((y,i)=>{b+=hC("sL"+i,110,y,17)+hC("sR"+i,530,y,17)});
+ const labels={pL0:"the left strand's 5′ phosphate end",pR3:"the right strand's 5′ phosphate end",lend3:"the left strand's 3′-OH end",rend3:"the right strand's 3′-OH end",pL1:"a backbone phosphate",pL2:"a backbone phosphate",pR1:"a backbone phosphate",pR2:"a backbone phosphate"};
+ ys.forEach((y,i)=>{labels["sL"+i]=labels["sR"+i]="a deoxyribose sugar";labels["bL"+i]=(pur(pairs[i][0])?"a purine (":"a pyrimidine (")+pairs[i][0]+")";labels["bR"+i]=(pur(pairs[i][1])?"a purine (":"a pyrimidine (")+pairs[i][1]+")";labels["hb"+i]="the H-bonds of the "+pairs[i][0]+"–"+pairs[i][1]+" pair"});
+ return{svg:SV(640,290,b),labels,targets:[
+ {c:tg.pur,q:"Tap a purine.",e:"Purines (A, G) have two rings, drawn as the wider, divided boxes. Pyrimidines (C, T) have one."},
+ {c:tg.pyr,q:"Tap a pyrimidine.",e:"Pyrimidines (C, T, U) have one ring. Each pyrimidine pairs with a two-ring purine."},
+ {c:tg.hb3,q:"Tap the H-bonds of a base pair held by THREE hydrogen bonds.",e:"G–C pairs have 3 H-bonds; A–T pairs have 2."},
+ {c:tg.hb2,q:"Tap the H-bonds of the base pair that's easiest to pull apart.",e:"A–T has only 2 H-bonds, vs 3 for G–C."},
+ {c:["pL1","pL2","pR1","pR2"],q:"Tap a phosphate that's part of a phosphodiester bond linking two nucleotides.",e:"Internal phosphates bridge one sugar's 3′ carbon to the next sugar's 5′ carbon. The free phosphate at a strand's 5′ end isn't linking anything."},
+ {c:["pL0"],q:"Tap the 5′ end of the LEFT strand.",e:"The 5′ end carries the free phosphate. The left strand runs 5′ (top) → 3′ (bottom)."},
+ {c:["pR3"],q:"Tap the 5′ end of the RIGHT strand.",e:"Antiparallel: the right strand's 5′ phosphate end is at the bottom."},
+ {c:["lend3"],q:"Tap the end of the LEFT strand where DNA polymerase could add the next nucleotide.",e:"New nucleotides attach to the free 3′-OH, at the bottom of the left strand."},
+ {c:["rend3"],q:"Tap the 3′ end of the RIGHT strand.",e:"The right strand's free 3′-OH is at the top, because the strands are antiparallel."},
+ {c:ys.flatMap((y,i)=>["sL"+i,"sR"+i]),q:"Tap a deoxyribose sugar.",e:"The pentagons in the backbone are the sugars. Phosphates link them, and bases hang off toward the middle."}]}}),
+
+d_fork:tapGen("repl","Replication fork",()=>{let b="";const yT=x=>138+(x-305)*(-78/355),yB=x=>162+(x-305)*(78/355);
+ for(let x=50;x<=260;x+=20)b+=LN(x,132,x,168,DC.dim,2);
+ b+=LN(40,130,272,130,DC.line,3)+LN(40,170,272,170,DC.line,3)+`<path d="M272 130 Q290 135 305 138 L660 60" fill="none" stroke="${DC.line}" stroke-width="3"/>`+`<path d="M272 170 Q290 165 305 162 L660 240" fill="none" stroke="${DC.line}" stroke-width="3"/>`;
+ b+=TX(24,135,"5′","mt")+TX(24,175,"3′","mt")+TX(676,58,"3′","mt")+TX(676,250,"5′","mt");
+ b+=`<rect x="136" y="137" width="26" height="26" rx="5" fill="${DC.violet}" opacity=".9"/>`+`<circle cx="288" cy="150" r="20" fill="${DC.green}" opacity=".9"/>`;
+ const seg=(x1,x2,off,yf,col,w=5)=>LN(x1,yf(x1)+off,x2,yf(x2)+off,col,w);
+ b+=seg(350,648,16,yT,DC.uv)+seg(628,648,16,yT,DC.red);
+ b+=`<polygon points="${[[350,yT(350)+16],[362,yT(362)+16-7],[362,yT(362)+16+7]].map(p=>p.join(",")).join(" ")}" fill="${DC.uv}"/>`;
+ const frags=[[380,470,true],[484,575,true],[589,648,false]];
+ frags.forEach(([a,z,pr])=>{b+=seg(a,z,-16,yB,DC.uv);if(pr)b+=seg(a,a+18,-16,yB,DC.red);const ye=yB(z)-16;b+=`<polygon points="${[[z+4,ye+1],[z-8,ye-7],[z-6,ye+8]].map(p=>p.join(",")).join(" ")}" fill="${DC.uv}"/>`});
+ b+=hP("lead",bandPts(350,yT(350)+16,648,yT(648)+16,8));
+ b+=hP("fA",bandPts(380,yB(380)-16,470,yB(470)-16,8))+hP("fB",bandPts(484,yB(484)-16,575,yB(575)-16,8))+hP("fC",bandPts(589,yB(589)-16,648,yB(648)-16,8));
+ b+=hP("prL",bandPts(628,yT(628)+16,648,yT(648)+16,9))+hP("prA",bandPts(380,yB(380)-16,398,yB(398)-16,9))+hP("prB",bandPts(484,yB(484)-16,502,yB(502)-16,9));
+ b+=hC("n1",477,yB(477)-16,8)+hC("n2",582,yB(582)-16,8)+hC("l3",352,yT(352)+16,9)+hC("heli",288,150,23)+hR("topo",132,133,34,34);
+ return{svg:SV(700,290,b),labels:{lead:"the leading strand",fA:"the newest Okazaki fragment",fB:"an Okazaki fragment",fC:"the oldest Okazaki fragment",prL:"the leading strand's RNA primer",prA:"an RNA primer",prB:"an RNA primer",n1:"a nick between fragments",n2:"a nick between fragments",l3:"the leading strand's 3′ end",heli:"helicase",topo:"topoisomerase"},targets:[
+ {c:["heli"],q:"The fork moves LEFT. Tap the enzyme that separates the two template strands.",e:"Helicase sits right at the fork junction, unwinding the duplex by breaking base-pair H-bonds."},
+ {c:["topo"],q:"The fork moves LEFT. Tap the enzyme that relieves the overwinding that builds up ahead of the fork.",e:"Topoisomerase works on the still-double-stranded DNA ahead of the fork, cutting and resealing the backbone."},
+ {c:["lead"],q:"Tap the new strand that's synthesized continuously.",e:"The top template runs 3′ at its right end, so the new strand grows 5′→3′ leftward, following the fork: the leading strand."},
+ {c:["fA","fB","fC"],q:"Tap an Okazaki fragment.",e:"Lagging-strand pieces are made away from the fork (5′→3′ to the right) and later joined by ligase."},
+ {c:["prL","prA","prB"],q:"Tap an RNA primer (red).",e:"Each Okazaki fragment starts with a primer at its 5′ end. The leading strand has one primer at its start."},
+ {c:["n1","n2"],q:"Tap a spot where DNA ligase still needs to act.",e:"Ligase seals the nicks between adjacent fragments with a phosphodiester bond (after Pol I replaces the primers)."},
+ {c:["l3"],q:"Tap the 3′ end of the leading strand.",e:"The leading strand grows toward the fork, so its growing 3′ end points at the helicase."},
+ {c:["fA"],q:"Tap the Okazaki fragment that was made most recently.",e:"The lagging strand restarts near the fork as it opens, so the fragment closest to the fork is the newest."},
+ {c:["fC"],q:"Tap the oldest Okazaki fragment.",e:"The fragment farthest from the fork was made first. Its primer has already been replaced."}]}}),
+
+d_ribo:tapGen("tx","Translation diagram",()=>{let b="";
+ b+=`<ellipse cx="330" cy="165" rx="170" ry="80" fill="#24402f" opacity=".85"/>`+`<ellipse cx="330" cy="266" rx="150" ry="22" fill="#1d5a45" opacity=".85"/>`;
+ b+=LN(36,244,664,244,DC.uv,4);
+ const seq="GCAGUUGCGAACUCGU"+"ACU"+"CG"+"UGG"+"AACGUCAGUACGUAC";seq.split("").forEach((ch,i)=>{b+=`<text x="${44+i*16}" y="238" text-anchor="middle" class="mt">${ch}</text>`});
+ const trna=(x,ac)=>`<rect x="${x-11}" y="148" width="22" height="56" rx="8" fill="${DC.violet}"/><rect x="${x-26}" y="164" width="52" height="12" rx="6" fill="${DC.violet}"/>`+ac.split("").map((c,i)=>`<text x="${x-16+i*16}" y="219" text-anchor="middle" style="font-size:12px">${c}</text>`).join("");
+ b+=trna(316,"UGA")+trna(396,"ACC");
+ const chain=[[316,135],[292,112],[265,95],[236,84],[207,78],[178,76]];
+ for(let i=chain.length-1;i>0;i--)b+=LN(chain[i][0],chain[i][1],chain[i-1][0],chain[i-1][1],DC.amber,2);
+ b+=LN(316,135,316,148,DC.amber,2)+LN(396,135,396,148,DC.amber,2);
+ chain.forEach(([x,y])=>{b+=`<circle cx="${x}" cy="${y}" r="11" fill="#5a3f22" stroke="${DC.amber}" stroke-width="2"/>`});
+ b+=`<circle cx="396" cy="135" r="11" fill="#5a2a40" stroke="${DC.pink}" stroke-width="2"/>`;
+ b+=LN(520,288,640,288,DC.line,2)+`<polygon points="640,288 630,283 630,293" fill="${DC.line}"/>`+TX(580,280,"ribosome moves","mt");
+ b+=hR("m5",28,228,36,30)+hR("m3",636,228,36,30)+hR("codon",378,224,52,26)+hR("anti",378,206,52,18)+hR("trna",383,146,26,58)+hC("aa",396,135,14)+hR("ptrna",303,146,26,58);
+ chain.slice(0,5).forEach(([x,y],i)=>{b+=hC("pp"+i,x,y,13)});b+=hC("nterm",178,76,14)+hR("ribo",436,140,46,52)+hR("ribo",260,262,140,22);
+ const labels={m5:"the mRNA's 5′ end",m3:"the mRNA's 3′ end",codon:"the codon paired with the incoming tRNA",anti:"the incoming tRNA's anticodon",trna:"the incoming aminoacyl-tRNA",aa:"the incoming amino acid",ptrna:"the tRNA holding the growing chain",nterm:"the N-terminus",ribo:"the ribosome"};for(let i=0;i<5;i++)labels["pp"+i]="the growing polypeptide";
+ return{svg:SV(700,300,b),labels,targets:[
+ {c:["m5"],q:"Tap the 5′ end of the mRNA.",e:"Ribosomes read mRNA 5′→3′. It's moving right, so the 5′ end is on the left."},
+ {c:["m3"],q:"Tap the 3′ end of the mRNA.",e:"The ribosome moves toward the mRNA's 3′ end."},
+ {c:["codon"],q:"Tap the codon that's base-paired with the incoming tRNA.",e:"The incoming aminoacyl-tRNA's anticodon pairs antiparallel with the codon directly beneath it."},
+ {c:["anti"],q:"Tap the anticodon of the incoming tRNA.",e:"The anticodon is the 3-base loop at the bottom of the tRNA. It pairs with the mRNA codon."},
+ {c:["aa"],q:"Tap the amino acid that will be added to the chain next.",e:"The incoming tRNA carries the next amino acid. It's joined to the C-terminal end of the growing chain."},
+ {c:["nterm"],q:"Tap the N-terminus of the growing polypeptide.",e:"Proteins grow N→C, so the first amino acid made (the N-terminus) is the free end farthest from the ribosome."},
+ {c:["ptrna"],q:"Tap the tRNA that's holding the growing polypeptide.",e:"The previous tRNA holds the chain until it's transferred onto the incoming amino acid."},
+ {c:["ribo"],q:"Tap the machine whose RNA catalyzes peptide bonds.",e:"The ribosome (rRNA + proteins). The rRNA does the catalysis."},
+ {c:["pp0","pp1","pp2","pp3","pp4","nterm"],q:"Tap the growing polypeptide.",e:"The chain of amino acids attached to the tRNA that came in previously."}]}}),
+
+d_gene:tapGen("var","Gene & mRNA anatomy",()=>{let b="";
+ b+=TX(20,36,"DNA","mt","start")+LN(20,60,680,60,DC.line,3);
+ const box=(x1,x2,col,h=24,y=60)=>`<rect x="${x1}" y="${y-h/2}" width="${x2-x1}" height="${h}" rx="3" fill="${col}"/>`;
+ b+=box(40,90,DC.teal)+box(160,220,"#5a6bb0")+`<path d="M224 48 V30 H252" fill="none" stroke="${DC.fg}" stroke-width="2"/><polygon points="258,30 249,25 249,35" fill="${DC.fg}"/>`;
+ b+=box(228,300,DC.amber)+box(370,440,DC.amber)+box(505,590,DC.amber)+box(615,640,DC.red);
+ b+=TX(20,150,"mature mRNA","mt","start")+LN(69,190,640,190,DC.uv,2)+`<circle cx="60" cy="190" r="9" fill="${DC.pink}"/>`;
+ b+=box(73,110,DC.amber,12,190)+box(110,420,DC.amber,26,190)+box(420,500,DC.amber,12,190)+LN(180,178,180,202,DC.bg,1,'stroke-dasharray="2 3"')+LN(300,178,300,202,DC.bg,1,'stroke-dasharray="2 3"');
+ b+=`<text x="560" y="195" text-anchor="middle" class="mt">AAAAAAAAAA</text>`;
+ b+=hR("enh",36,44,58,32)+hR("prom",156,44,68,32)+hR("tss",222,20,40,26)+hR("ex",226,44,76,32)+hR("ex",368,44,74,32)+hR("ex",503,44,89,32)+hR("intr",302,48,66,24)+hR("intr",442,48,61,24)+hR("term",611,44,33,32)+hC("cap",60,190,13)+hR("u5",73,180,37,20)+hR("cds",112,175,306,30)+hR("u3",420,180,80,20)+hR("pa",505,176,112,28);
+ return{svg:SV(700,230,b),labels:{enh:"the enhancer",prom:"the promoter",tss:"the transcription start site",ex:"an exon",intr:"an intron",term:"the termination signal",cap:"the 5′ cap",u5:"the 5′ UTR",cds:"the coding sequence",u3:"the 3′ UTR",pa:"the poly(A) tail"},targets:[
+ {c:["prom"],q:"Tap where RNA polymerase binds to start transcription.",e:"The promoter sits just upstream of the start site and isn't transcribed."},
+ {c:["enh"],q:"Tap the regulatory element that can act from far away (even 100,000 bp) by DNA looping.",e:"Enhancers bind transcription factors and loop over to contact the promoter."},
+ {c:["tss"],q:"Tap the transcription start site (first nucleotide copied into RNA).",e:"The bent arrow marks where transcription begins and which direction it goes."},
+ {c:["intr"],q:"Tap a DNA region that's transcribed but removed before the mRNA leaves the nucleus.",e:"Introns are spliced out by the spliceosome. Exons are joined."},
+ {c:["ex"],q:"Tap a DNA region that ends up in the mature mRNA.",e:"Exons, including the UTR parts of the first and last exons, are kept."},
+ {c:["cap"],q:"Tap the structure that helps the mRNA get exported and bind the ribosome, attached by a 5′–5′ linkage.",e:"The 5′ cap is a methylated G."},
+ {c:["pa"],q:"Tap the ~200-nt addition made after cleavage at AAUAAA.",e:"Poly(A) polymerase adds the tail, which stabilizes the mRNA."},
+ {c:["u5"],q:"Tap the 5′ UTR: kept in the mRNA but not translated, before the start codon.",e:"UTRs are untranslated regions at the two ends of the mature mRNA."},
+ {c:["cds"],q:"Tap the part of the mature mRNA that's actually translated into protein.",e:"The coding sequence runs from AUG to the stop codon, across the joined exons."},
+ {c:["term"],q:"Tap the signal that ends transcription.",e:"The termination signal is downstream of the last exon."}]}}),
+
+d_plasmid:tapGen("clone","Plasmid map (recitation)",()=>{let b="";const cx=220,cy=150,r=105;const pt=(a,rr=r)=>[cx+rr*Math.cos(a*Math.PI/180),cy+rr*Math.sin(a*Math.PI/180)];
+ const arc=(a1,a2,col,w)=>{const p1=pt(a1),p2=pt(a2);return`<path d="M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} A${r} ${r} 0 ${a2-a1>180?1:0} 1 ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`};
+ b+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${DC.line}" stroke-width="3"/>`+arc(-20,50,DC.amber,11)+arc(160,215,DC.violet,11);
+ b+=`<rect x="208" y="247" width="24" height="16" rx="3" fill="${DC.green}"/>`+TX(220,284,"ori","mt");
+ const site=(a,name)=>{const i=pt(a,r-9),o=pt(a,r+9),l=pt(a,r+28);const anc=Math.cos(a*Math.PI/180)>0.3?"start":Math.cos(a*Math.PI/180)<-0.3?"end":"middle";return LN(i[0].toFixed(1),i[1].toFixed(1),o[0].toFixed(1),o[1].toFixed(1),DC.fg,2)+TX(l[0].toFixed(1),(l[1]+5).toFixed(1),name,"mt",anc)};
+ b+=site(187,"KpnI")+site(-90,"SalI")+site(-55,"XhoI")+site(-135,"HindIII");
+ b+=TX(362,192,"Amp<tspan dy='-6' style='font-size:10px'>R</tspan>","","start")+TX(96,93,"Tet<tspan dy='-6' style='font-size:10px'>R</tspan>","","end");
+ b+=TX(220,155,"3 kb","mt");
+ b+=hR("amp",278,100,62,145)+hR("amp",354,174,62,26)+hR("tet",104,82,40,112)+hR("tet",44,74,60,26)+hR("ori",196,240,48,50)+hC("kpn",116,137,11)+hR("kpn",52,124,48,22)+hR("sal",196,8,48,40)+hR("xho",276,26,52,40)+hR("hind",120,26,62,40);
+ return{svg:SV(460,295,b),labels:{amp:"the ampicillin-resistance gene",tet:"the tetracycline-resistance gene",ori:"the origin of replication",kpn:"the KpnI site",sal:"the SalI site",xho:"the XhoI site",hind:"the HindIII site"},targets:[
+ {c:["tet"],q:"Gene A is cloned into the KpnI site. Tap the gene that's destroyed in every recombinant plasmid.",e:"KpnI sits inside Tet<sup>R</sup>. The insert disrupts it (insertional inactivation), so recombinants are Tet-sensitive."},
+ {c:["amp"],q:"After cloning Gene A into KpnI, tap the gene whose antibiotic you'd put in the plate.",e:"Amp<sup>R</sup> is untouched, so plate on ampicillin only. Tetracycline would kill the recombinants."},
+ {c:["ori"],q:"Tap the element the plasmid needs to be copied and passed on as the bacteria divide.",e:"Without an origin of replication, the plasmid isn't copied and is diluted out."},
+ {c:["kpn"],q:"Gene A was inserted with KpnI. Tap the site you'd cut to drop the insert back out (3 kb + 2 kb on a gel).",e:"Cutting at both KpnI sites flanking the insert releases the 2 kb fragment from the 3 kb vector."}]}}),
+
+d_cuts:tapGen("clone","Restriction cut patterns",()=>{const E={"5′ overhang":[["EcoRI","GAATTC",1],["BamHI","GGATCC",1],["HindIII","AAGCTT",1]],"3′ overhang":[["PstI","CTGCAG",5],["KpnI","GGTACC",5],["SacI","GAGCTC",5]],"blunt":[["SmaI","CCCGGG",3],["EcoRV","GATATC",3]]};
+ const chosen=[pick(E["5′ overhang"]),pick(E["3′ overhang"]),pick(E["blunt"])];const all=[].concat(...Object.values(E)).filter(e=>!chosen.includes(e));chosen.push(pick(all));const list=shuffle(chosen);
+ const typeOf=e=>e[2]<3?"5":e[2]>3?"3":"b";let b="";
+ list.forEach((e,i)=>{const x0=10+(i%2)*340,y0=10+Math.floor(i/2)*135;b+=`<rect x="${x0}" y="${y0}" width="320" height="120" rx="10" fill="${DC.panel}" stroke="${DC.dim}"/>`+TX(x0+16,y0+24,e[0],"","start");
+  const top=e[1],bot=comp(top);for(let j=0;j<6;j++){b+=`<text x="${x0+75+j*34}" y="${y0+62}" text-anchor="middle" style="font-size:18px">${top[j]}</text><text x="${x0+75+j*34}" y="${y0+100}" text-anchor="middle" style="font-size:18px">${bot[j]}</text>`}
+  b+=TX(x0+40,y0+62,"5′","mt")+TX(x0+290,y0+62,"3′","mt")+TX(x0+40,y0+100,"3′","mt")+TX(x0+290,y0+100,"5′","mt");
+  const xt=x0+75+e[2]*34-17,xb=x0+75+(6-e[2])*34-17;b+=`<path d="M${xt} ${y0+40} V${y0+80} H${xb} V${y0+110}" fill="none" stroke="${DC.red}" stroke-width="2.5"/>`;
+  b+=hR(e[0],x0,y0,320,120)});
+ const ids=t=>list.filter(e=>typeOf(e)===t).map(e=>e[0]);const labels={};list.forEach(e=>labels[e[0]]=e[0]+" ("+(typeOf(e)==="5"?"5′ overhang":typeOf(e)==="3"?"3′ overhang":"blunt")+")");
+ return{svg:SV(680,280,b),labels,targets:[
+ {c:ids("5"),q:"The red line shows where each enzyme cuts. Tap an enzyme that leaves a 5′ overhang.",e:"If the top strand is cut LEFT of the bottom strand's cut, the single-stranded tails that remain end in 5′ ends: a 5′ overhang (e.g., EcoRI G^AATTC)."},
+ {c:ids("3"),q:"Tap an enzyme that leaves a 3′ overhang.",e:"If the top strand is cut to the RIGHT of the bottom cut, the tails are 3′ ends (e.g., PstI CTGCA^G, KpnI GGTAC^C)."},
+ {c:ids("b"),q:"Tap the enzyme that leaves blunt ends.",e:"Both strands are cut at the same position, so there's no overhang (e.g., SmaI CCC^GGG)."}]}}),
+
+d_hc:tapGen("her","Hershey–Chase tube",()=>{let b="";
+ b+=`<path d="M110 40 V215 Q160 275 210 215 V40" fill="#1b2a4a" stroke="${DC.line}" stroke-width="3"/>`+`<rect x="113" y="70" width="94" height="140" fill="#24406a" opacity=".6"/>`+`<ellipse cx="160" cy="240" rx="24" ry="10" fill="#8a6a3a"/>`;
+ for(let i=0;i<10;i++)b+=`<path d="M${125+(i*37)%70} ${90+(i*53)%100} l6 -8 l6 8" fill="none" stroke="${DC.line}" stroke-width="1.5"/>`;
+ b+=TX(160,24,"after blending + centrifuging","mt");
+ b+=`<rect x="300" y="40" width="300" height="180" rx="10" fill="${DC.panel}" stroke="${DC.dim}"/>`+TX(450,70,"T2 phage: protein coat + DNA","mt")+TX(450,100,"infect E. coli → blend → spin","mt")+TX(450,140,"▲ empty coats (\"ghosts\")","mt")+TX(450,170,"● bacterial cells","mt");
+ b+=hR("sup",113,72,94,140)+hR("pellet",128,224,64,32);
+ return{svg:SV(620,270,b),labels:{sup:"the supernatant (phage ghosts)",pellet:"the pellet (bacteria)"},targets:[
+ {c:["pellet"],q:"Phage with ³²P-labeled DNA infect bacteria; you blend and centrifuge. Tap where most of the ³²P ends up.",e:"The DNA entered the cells, which pellet. This showed DNA is the genetic material."},
+ {c:["sup"],q:"Phage with ³⁵S-labeled protein infect bacteria; you blend and centrifuge. Tap where most of the ³⁵S ends up.",e:"The coats stayed outside and were sheared off, staying in the supernatant."},
+ {c:["pellet"],q:"³⁵S-labeled phage infect bacteria, but you SKIP the blender. Tap where most of the ³⁵S ends up.",e:"Without shearing, the coats stay stuck to the bacteria and pellet with them, so the experiment fails."},
+ {c:["sup"],q:"³²P-labeled phage infect, but the blender is so violent it bursts the bacteria. Tap where much of the ³²P now ends up.",e:"Lysed cells release the injected DNA into the supernatant."}]}}),
+
+d_ms:tapGen("repl","Meselson–Stahl tube",()=>{let b="";
+ b+=`<rect x="200" y="30" width="80" height="230" rx="14" fill="#1b2a4a" stroke="${DC.line}" stroke-width="3"/>`;
+ for(let i=0;i<10;i++)b+=`<rect x="203" y="${34+i*22}" width="74" height="22" fill="#7fd6ff" opacity="${(0.04+i*0.025).toFixed(3)}"/>`;
+ for(const y of [100,150,200])b+=`<rect x="206" y="${y-5}" width="68" height="10" rx="3" fill="none" stroke="${DC.amber}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+ b+=TX(300,40,"top (less dense)","mt","start")+TX(300,255,"bottom (most dense)","mt","start")+TX(300,150,"dashed = possible band positions","mt","start");
+ b+=hR("light",204,86,72,28)+hR("hyb",204,136,72,28)+hR("heavy",204,186,72,28);
+ return{svg:SV(560,280,b),labels:{light:"the light (¹⁴N/¹⁴N) position",hyb:"the hybrid (¹⁵N/¹⁴N) position",heavy:"the heavy (¹⁵N/¹⁵N) position"},targets:[
+ {c:["hyb"],q:"CsCl gradient: cells grown in ¹⁵N, then ONE generation in ¹⁴N. Tap where the DNA bands.",e:"Each daughter helix has one old heavy strand and one new light strand, so it has hybrid density."},
+ {c:["heavy"],q:"Tap where DNA from cells grown many generations in ¹⁵N (generation 0) bands.",e:"Fully heavy DNA is the densest and sinks lowest."},
+ {c:["light"],q:"Tap where DNA from cells grown only in ¹⁴N bands.",e:"Fully light DNA is the least dense and sits highest."},
+ {c:["light"],q:"Two generations after the switch from ¹⁵N to ¹⁴N, half the DNA is hybrid. Tap where the other half bands.",e:"Generation 2: 2 hybrid + 2 light molecules (semi-conservative)."},
+ {c:["heavy"],q:"If replication were CONSERVATIVE, generation 1 would show light DNA plus a band here. Tap it.",e:"Conservative: the original helix stays fully heavy and the new helix is fully light."}]}}),
+
+d_gel:tapGen("seq","Sanger gel",()=>{const s=randSeq(8);const lanes="ACGT";let b="";
+ b+=`<rect x="100" y="6" width="320" height="12" rx="4" fill="#3b3f7a"/>`+`<rect x="100" y="302" width="320" height="12" rx="4" fill="#3b3f7a"/>`+`<rect x="100" y="24" width="320" height="272" rx="6" fill="#141a3a" stroke="${DC.dim}"/>`;
+ [...lanes].forEach((L,i)=>{const x=150+i*74;b+=`<rect x="${x-22}" y="30" width="44" height="7" fill="#05060f"/>`+TX(x,54,"dd"+L,"mt")});
+ const yOf=n=>282-n*26;
+ s.split("").forEach((ch,i)=>{const n=i+1,x=150+lanes.indexOf(ch)*74;b+=`<rect x="${x-22}" y="${yOf(n)-4}" width="44" height="8" rx="2" fill="${DC.amber}"/>`});
+ s.split("").forEach((ch,i)=>{const n=i+1,x=150+lanes.indexOf(ch)*74;b+=hR("b"+n,x-28,yOf(n)-10,56,20)});
+ b+=hR("eTop",96,2,328,20)+hR("eBot",96,298,328,20);
+ const k=2+rnd(6);const tb=pick("ACGT");const opp=CMP[tb];const hits=s.split("").map((c,i)=>c===opp?"b"+(i+1):null).filter(Boolean);
+ const labels={eTop:"the top electrode (negative, by the wells)",eBot:"the bottom electrode (positive)"};s.split("").forEach((c,i)=>labels["b"+(i+1)]=`the band for added base #${i+1} (${c})`);
+ const ord=n=>n+(n===1?"st":n===2?"nd":n===3?"rd":"th");
+ const targets=[
+ {c:["b1"],q:"Tap the shortest product on this Sanger gel.",e:`Smallest fragments run farthest, so the lowest band is the shortest. Reading bottom→top gives the new strand 5′-${s}-3′.`},
+ {c:["b"+k],q:`Tap the band for the ${ord(k)} nucleotide added after the primer.`,e:`Count bands from the bottom: 1, 2, 3… The new strand reads 5′-${s}-3′ from bottom to top.`},
+ {c:["eBot"],q:"Tap the positive electrode (where the DNA is heading).",e:"The wells sit at the negative end. DNA's phosphate backbone is negative, so it runs toward + at the far end."},
+ {c:["b8"],q:"Tap the band that corresponds to the 3′-most base of the new strand shown here.",e:`The new strand grows 5′→3′, so its 3′-most base is in the longest product (top band). New strand: 5′-${s}-3′.`}];
+ if(hits.length)targets.push({c:hits,q:`Tap a band where the new chain terminated opposite a template <b>${tb}</b>.`,e:`Opposite template ${tb}, the new strand has ${opp}, so look in the dd${opp} lane. New strand: 5′-${s}-3′.`});
+ return{svg:SV(520,320,b),labels,targets}}),
+
+d_bead:tapGen("gen3","scRNA-seq bead",()=>{let b="";
+ b+=`<circle cx="64" cy="90" r="44" fill="${DC.violet}" opacity=".85"/>`+TX(112,58,"5′","mt")+TX(640,58,"3′","mt");
+ const segs=[["handle",112,232,"#5a6bb0"],["bc",242,362,DC.amber],["umi",372,462,DC.pink],["polyT",472,628,DC.green]];
+ b+=LN(108,90,632,90,DC.line,2);segs.forEach(([id,a,z,col])=>{b+=`<rect x="${a}" y="74" width="${z-a}" height="32" rx="4" fill="${col}" opacity=".85"/>`});
+ segs.forEach(([id,a,z])=>{b+=hR(id,a-3,70,z-a+6,40)});b+=hC("bead",64,90,46);
+ return{svg:SV(680,170,b),labels:{handle:"the PCR primer site",bc:"the cell barcode",umi:"the UMI",polyT:"the poly(T) tail",bead:"the gel bead"},targets:[
+ {c:["bc"],q:"Tap the segment that's identical on every strand of THIS bead but different between beads, so it tells you which cell a read came from.",e:"The cell barcode. Every cDNA made in that droplet carries it. Bead order 5′→3′: PCR site, barcode, UMI, poly(T)."},
+ {c:["umi"],q:"Tap the random segment, different on every strand, that lets you count each original mRNA molecule only once.",e:"The UMI (unique molecular identifier) collapses PCR duplicates."},
+ {c:["polyT"],q:"Tap the segment that captures mRNA.",e:"Poly(T) at the 3′ end base-pairs with the mRNA's poly(A) tail, and reverse transcriptase extends from it."},
+ {c:["handle"],q:"Tap the segment shared by ALL beads, used to PCR-amplify every cDNA.",e:"The common PCR primer site sits at the 5′ end, next to the bead."}]}}),
+
+d_cas9:tapGen("gen4","Cas9 at its target",()=>{let b="";
+ b+=`<rect x="170" y="60" width="360" height="170" rx="70" fill="#1f4747" opacity=".75" stroke="${DC.teal}"/>`;
+ b+=`<path d="M20 130 H240 Q258 100 290 100 H420 Q446 100 462 130 H660" fill="none" stroke="${DC.line}" stroke-width="3"/>`+LN(20,170,660,170,DC.line,3);
+ for(let x=40;x<240;x+=22)b+=LN(x,133,x,167,DC.dim,2);for(let x=480;x<660;x+=22)b+=LN(x,133,x,167,DC.dim,2);
+ b+=LN(272,152,432,152,DC.pink,4);for(let x=280;x<430;x+=16)b+=LN(x,155,x,167,DC.pink,1);
+ b+=`<path d="M272 152 C232 140 222 92 262 82 C302 72 326 96 300 112" fill="none" stroke="${DC.uv}" stroke-width="4"/>`;
+ b+=`<rect x="466" y="120" width="36" height="20" rx="3" fill="${DC.amber}"/>`;
+ b+=`<polygon points="410,92 404,82 416,82" fill="${DC.red}"/><polygon points="410,178 404,188 416,188" fill="${DC.red}"/>`+LN(410,92,410,108,DC.red,2)+LN(410,162,410,178,DC.red,2);
+ b+=TX(20,120,"5′","mt","start")+TX(20,195,"3′","mt","start")+TX(660,120,"3′","mt","end")+TX(660,195,"5′","mt","end");
+ b+=hR("cas",300,196,120,26)+hR("cas",190,186,60,30)+hR("spacer",268,143,128,18)+hR("tracr",218,70,92,64)+hR("pam",462,116,44,28)+hR("cut",398,78,24,24)+hR("cut",398,174,24,22);
+ return{svg:SV(680,240,b),labels:{cas:"Cas9",spacer:"the guide's spacer (crRNA part)",tracr:"the tracrRNA part of the sgRNA",pam:"the PAM",cut:"the cut site"},targets:[
+ {c:["pam"],q:"Tap the short motif that must sit next to the target, or Cas9 won't cut.",e:"The PAM (2–6 bp). The bacterium's own CRISPR array lacks it, so Cas9 doesn't cut the bacterium's genome."},
+ {c:["spacer"],q:"Tap the part of the guide RNA that base-pairs with the target DNA.",e:"The ~20-nt spacer (crRNA-derived). Change it to retarget Cas9."},
+ {c:["tracr"],q:"Tap the part of the sgRNA that binds Cas9 (originally a separate RNA in bacteria).",e:"The tracrRNA-derived scaffold, fused to the crRNA by a linker."},
+ {c:["cut"],q:"Tap where the double-strand break is made.",e:"Cas9 cuts both strands within the target, a few bp from the PAM. Then NHEJ or HDR repairs it."},
+ {c:["cas"],q:"Tap the component you'd swap for a catalytically dead version to switch genes on or off without cutting.",e:"dCas9 still goes where the guide sends it but can't cut. Fuse it to chromatin openers or closers."}]}}),
+
+d_locus:tapGen("gen4","CRISPR locus",()=>{let b="";
+ b+=LN(20,80,660,80,DC.line,3)+`<rect x="40" y="64" width="60" height="32" rx="4" fill="${DC.violet}"/>`+`<rect x="116" y="64" width="110" height="32" rx="4" fill="${DC.teal}"/>`;
+ const cols=[DC.pink,DC.amber,DC.uv,DC.green];let x=250;const hs=[];
+ for(let i=0;i<9;i++){if(i%2===0){b+=`<rect x="${x}" y="68" width="22" height="24" fill="#8a8fb8"/>`;hs.push(hR("rep",x-2,64,26,32));x+=22}else{b+=`<rect x="${x}" y="68" width="48" height="24" fill="${cols[(i-1)/2]}"/>`;hs.push(hR("spc",x-1,64,50,32));x+=48}}
+ b+=hs.join("")+hR("tracrg",36,60,68,40)+hR("cas",112,60,118,40);
+ return{svg:SV(680,140,b),labels:{rep:"a repeat",spc:"a spacer",tracrg:"the tracrRNA gene",cas:"the Cas genes"},targets:[
+ {c:["spc"],q:"Tap a spacer: a genetic memory of a past phage.",e:"Spacers (each a different color here) match phage DNA. Repeats (gray, identical) separate them."},
+ {c:["rep"],q:"Tap a repeat.",e:"Repeats are identical palindromic sequences between the unique spacers."},
+ {c:["cas"],q:"Tap the genes that encode the DNA-cutting nuclease.",e:"The Cas genes sit next to the array."},
+ {c:["spc"],q:"A bacterium survives attack by a NEW phage. Tap the kind of element it adds to this locus.",e:"It inserts a new spacer copied from the phage (as in the Danisco yogurt experiment)."},
+ {c:["tracrg"],q:"Tap the gene for the RNA that pairs with the repeats and holds onto Cas9.",e:"tracrRNA pairs with the crRNA's repeat portion and binds Cas9."}]}}),
+
+d_line:tapGen("gen1","LINE vs SINE",()=>{let b="";
+ b+=TX(30,40,"LINE (~7 kb)","mt","start")+TX(30,130,"SINE (~300 bp)","mt","start")+TX(650,190,"not to scale","mt","end");
+ const box=(x1,x2,y,col)=>`<rect x="${x1}" y="${y-14}" width="${x2-x1}" height="28" rx="3" fill="${col}"/>`;
+ b+=LN(20,64,670,64,DC.dim,2)+box(40,80,64,"#5a6bb0")+box(85,235,64,DC.amber)+box(240,520,64,DC.amber)+box(525,590,64,DC.teal)+`<text x="618" y="69" text-anchor="middle" class="mt">AAAA</text>`;
+ b+=LN(20,154,670,154,DC.dim,2)+box(200,320,154,"#6b6f9c")+box(325,390,154,DC.teal)+`<text x="418" y="159" text-anchor="middle" class="mt">AAAA</text>`;
+ b+=hR("lprom",36,46,48,36)+hR("orf",83,46,154,36)+hR("orf",238,46,284,36)+hR("l3u",523,46,69,36)+hR("sbody",198,136,124,36)+hR("s3u",323,136,69,36);
+ return{svg:SV(690,200,b),labels:{lprom:"the LINE's promoter",orf:"a LINE protein-coding gene",l3u:"the LINE's 3′ UTR",sbody:"the SINE body (no genes)",s3u:"the SINE's 3′ UTR"},targets:[
+ {c:["orf"],q:"Tap a LINE gene that encodes a protein (e.g., reverse transcriptase/endonuclease).",e:"LINEs carry two genes: one for reverse transcriptase/endonuclease and one insertion helper."},
+ {c:["lprom"],q:"Tap the LINE region that lets each new copy be transcribed wherever it lands.",e:"LINEs carry their own promoter inside the element, so copies stay active."},
+ {c:["s3u"],q:"Tap the SINE region that LINE proteins recognize to copy the SINE.",e:"SINEs make no proteins and hijack LINE machinery via a 3′ UTR the LINE proteins recognize."},
+ {c:["l3u"],q:"Delete which LINE region, and its own reverse transcriptase can no longer copy it? Tap it.",e:"The LINE's proteins recognize its 3′ UTR. Without it, no retrotransposition."},
+ {c:["sbody"],q:"Tap the element that encodes no protein of its own and depends on another element to move.",e:"The SINE (~300 bp) is a parasite of LINEs."}]}})
+};
+Object.assign(GENS,DIAGS);
+
 /* ---------------- state ---------------- */
 const KEY="cda-v1";
 let S={xp:0,best:0,q:{},g:{}};
@@ -722,11 +1027,13 @@ const MODES=[
  {id:"mixed",tag:"Recommended",name:"Mixed run",desc:"20 items from everything, weighted toward what you miss and haven't seen."},
  {id:"boss",tag:"Exam sim",name:"Boss exam",desc:"30 items across all 10 units, about a third of them sequence drills. Scored at the end."},
  {id:"missed",tag:"Fix weak spots",name:"Missed pile",desc:"Only the items you got wrong last time. Clear it to zero."},
+ {id:"diagrams",tag:"Recitation style",name:"Diagram run",desc:"15 tap-the-drawing questions: nucleotides, helix, forks, ribosomes, plasmids, gels, CRISPR."},
  {id:"blitz",tag:"Quick",name:"Sequence blitz",desc:"15 generated problems: complements, mRNA, translation, primers, Sanger, digests."}];
 function renderPlay(){renderStats();
  document.getElementById("modes").innerHTML=MODES.map(m=>{let extra="";if(m.id==="missed"){const n=missedPool().length;extra=` <span class="tag" style="color:var(--muted)">${n} waiting</span>`}return`<button class="mode" data-mode="${m.id}"><span class="tag">${m.tag}</span><strong>${m.name}${extra}</strong><span>${m.desc}</span></button>`}).join("");
  document.getElementById("units").innerHTML=UNITS.map(u=>{const its=unitItems(u.id);const m=its.filter(itemMastered).length;const bands=12,on=Math.round(bands*m/its.length);return`<div class="unit"><div><h3>${u.name}</h3><div class="src">${u.src}</div></div><div class="gel" aria-label="${m} of ${its.length} mastered">${Array.from({length:bands},(_,i)=>`<i class="${i<on?"on":""}"></i>`).join("")}</div><div class="urow"><span>${m}/${its.length} mastered</span><span style="display:flex;gap:6px"><button class="btn ghost" data-study="${u.id}">Study</button><button class="btn primary" data-unit="${u.id}">Play</button></span></div></div>`}).join("");
- document.getElementById("skills").innerHTML=Object.entries(GENS).map(([k,g])=>{const r=S.g[k];return`<button class="skill" data-skill="${k}"><span>${g.name}</span><small>${r?(gMastered(k)?"★ ":"")+"best "+r.best:"new"}</small></button>`}).join("")}
+ document.getElementById("dlab").innerHTML=Object.entries(GENS).filter(([k,g])=>g.diag).map(([k,g])=>{const r=S.g[k];return`<button class="skill" data-skill="${k}"><span>${g.name}</span><small>${r?(gMastered(k)?"★ ":"")+"best "+r.best:"new"}</small></button>`}).join("");
+ document.getElementById("skills").innerHTML=Object.entries(GENS).filter(([k,g])=>!g.diag).map(([k,g])=>{const r=S.g[k];return`<button class="skill" data-skill="${k}"><span>${g.name}</span><small>${r?(gMastered(k)?"★ ":"")+"best "+r.best:"new"}</small></button>`}).join("")}
 function missedPool(){return QI.filter(x=>S.q[x.id]&&S.q[x.id].last===0).map(x=>({kind:"q",ref:x})).concat(Object.keys(GENS).filter(g=>S.g[g]&&S.g[g].streak===0&&S.g[g].w>0).map(g=>({kind:"g",ref:g})))}
 function weightedSample(pool,n,{genMax=3}={}){const out=[],used=new Set(),gcount={};let guard=0;while(out.length<n&&guard++<5000){const avail=pool.filter(it=>it.kind==="g"?(gcount[it.ref]||0)<genMax:!used.has(it.ref.id));if(!avail.length)break;const tot=avail.reduce((s,it)=>s+itemWeight(it),0);let r=Math.random()*tot,ch=avail[0];for(const it of avail){r-=itemWeight(it);if(r<=0){ch=it;break}}if(ch.kind==="g")gcount[ch.ref]=(gcount[ch.ref]||0)+1;else used.add(ch.ref.id);out.push(ch)}return out}
 const ALL=()=>UNITS.flatMap(u=>unitItems(u.id));
@@ -734,8 +1041,9 @@ function startRun(mode,arg){let items,title;
  if(mode==="unit"){items=weightedSample(unitItems(arg),12,{genMax:3});title=unitName(arg)}
  else if(mode==="skill"){items=Array.from({length:10},()=>({kind:"g",ref:arg}));title="Skill lab · "+GENS[arg].name}
  else if(mode==="mixed"){items=weightedSample(ALL(),20,{genMax:2});title="Mixed run"}
- else if(mode==="blitz"){items=Array.from({length:15},()=>({kind:"g",ref:pick(Object.keys(GENS))}));title="Sequence blitz"}
- else if(mode==="boss"){const gens=Object.keys(GENS);const qs=shuffle(UNITS.flatMap(u=>shuffle(QI.filter(x=>x.u===u.id)).slice(0,2).map(x=>({kind:"q",ref:x}))));items=shuffle(qs.slice(0,20).concat(Array.from({length:10},()=>({kind:"g",ref:pick(gens)}))));title="Boss exam"}
+ else if(mode==="blitz"){const sq=Object.keys(GENS).filter(k=>!GENS[k].diag);items=Array.from({length:15},()=>({kind:"g",ref:pick(sq)}));title="Sequence blitz"}
+ else if(mode==="diagrams"){items=weightedSample(Object.keys(GENS).filter(k=>GENS[k].diag).map(k=>({kind:"g",ref:k})),15,{genMax:2});title="Diagram run"}
+ else if(mode==="boss"){const gens=Object.keys(GENS);const qs=shuffle(UNITS.flatMap(u=>shuffle(QI.filter(x=>x.u===u.id)).slice(0,2).map(x=>({kind:"q",ref:x}))));items=shuffle(qs.slice(0,18).concat(Array.from({length:12},()=>({kind:"g",ref:pick(gens)}))));title="Boss exam"}
  else if(mode==="missed"){items=shuffle(missedPool()).slice(0,25);title="Missed pile";if(!items.length){toast("Nothing in the missed pile. Play a run first, or you've cleared it.");return}}
  R={mode,arg,title,items,i:0,score:0,streak:0,missed:[],xp0:S.xp,answered:false};show("quiz");nextQ()}
 let R=null,CUR=null;
@@ -748,6 +1056,7 @@ function nextQ(){if(R.i>=R.items.length)return endRun();CUR=build(R.items[R.i]);
  const c=document.getElementById("qcard");
  let h=`<div class="qunit">${unitName(CUR.u)}${CUR.gname?" · drill: "+CUR.gname:""}</div><p class="qtext">${CUR.q}</p>`;
  if(CUR.code)h+=`<pre class="seq">${CUR.code}</pre>`;
+ if(CUR.type==="tap")h+=`<div class="dg">${CUR.svg}</div><div class="taphint">Tap or click a region of the drawing. Tab + Enter works too. On a phone, scroll the drawing sideways if needed.</div>`;
  if(CUR.type==="mc")h+=`<div class="opts">${CUR.opts.map((o,i)=>`<button class="opt${CUR.mono?" mono":""}" data-i="${i}"><kbd>${i+1}</kbd><span class="t">${o}</span></button>`).join("")}</div>`;
  else h+=`<div class="tin"><input id="tin" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Your answer"><button class="btn primary" id="tsub">Check</button></div><div class="hint">${CUR.hint||""}</div><div class="err" id="terr" hidden></div>`;
  h+=`<div id="fb"></div><div class="actions"><button class="btn ghost" id="ctog">Codon table</button><button class="btn primary" id="next" hidden>Next →</button></div><div id="cbox" class="ctoggle tblwrap" hidden></div>`;
@@ -757,16 +1066,17 @@ function record(ok){const it=CUR.item;if(it.kind==="q"){const r=S.q[it.ref.id]||
  if(ok){R.score++;R.streak++;S.xp+=10+Math.min(R.streak,10);S.best=Math.max(S.best,R.streak)}else{R.streak=0;R.missed.push(CUR)}save()}
 function answerMC(i){if(R.answered)return;R.answered=true;const chosen=CUR.opts[i];const ok=chosen===CUR.correct;CUR.yours=chosen;record(ok);
  document.querySelectorAll(".opt").forEach((b,j)=>{b.disabled=true;if(CUR.opts[j]===CUR.correct)b.classList.add("right");else if(j===i)b.classList.add("wrong")});feedback(ok,null)}
+function answerTap(id){if(R.answered||!CUR||CUR.type!=="tap")return;R.answered=true;const ok=CUR.correct.includes(id);CUR.yours=CUR.labels[id]||"that spot";record(ok);const box=document.querySelector("#qcard .dg");box.classList.add("answered");box.querySelectorAll(".hs").forEach(h=>{const hid=h.dataset.hit;if(CUR.correct.includes(hid))h.classList.add("right");else if(hid===id)h.classList.add("wrong");h.setAttribute("tabindex","-1")});feedback(ok,ok?null:"You tapped "+CUR.yours+". The correct region is green.")}
 function answerText(){if(R.answered)return;const v=document.getElementById("tin").value;if(!v.trim()){const e=document.getElementById("terr");e.textContent="Enter an answer first.";e.hidden=false;return}R.answered=true;const res=CUR.check(v);CUR.yours=v;record(res.ok);document.getElementById("tin").disabled=true;document.getElementById("tsub").disabled=true;feedback(res.ok,res.note)}
 const PRAISE=["Correct.","Nailed it.","Yes.","Exactly.","Clean."];
-function feedback(ok,note){const ans=CUR.type==="text"?`<p><b>Answer:</b> <code>${CUR.answer}</code></p>`:(ok?"":`<p><b>Answer:</b> ${CUR.correct}</p>`);
+function feedback(ok,note){const ans=CUR.type==="tap"?(ok?"":`<p><b>Answer:</b> ${CUR.answer}</p>`):CUR.type==="text"?`<p><b>Answer:</b> <code>${CUR.answer}</code></p>`:(ok?"":`<p><b>Answer:</b> ${CUR.correct}</p>`);
  document.getElementById("fb").innerHTML=`<div class="fb ${ok?"ok":"no"}"><h4>${ok?pick(PRAISE):"Not quite."}</h4>${note?`<p>${note}</p>`:""}${ans}${/\n/.test(CUR.e)?`<pre>${CUR.e}</pre>`:`<p>${CUR.e}</p>`}</div>`;
  document.getElementById("next").hidden=false;document.getElementById("next").focus();
  document.getElementById("qmeta").textContent=`${R.title} · ${R.i+1}/${R.items.length} · score ${R.score} · streak ${R.streak}`;renderStats()}
 function endRun(){const n=R.items.length,pct=Math.round(100*R.score/n);show("end");renderStats();
  const el=document.getElementById("v-end");
  el.innerHTML=`<div class="card"><div class="qunit">${R.title} complete</div><div class="endnum">${R.score}/${n}</div><p class="sub" style="margin-top:8px">${pct}% · +${S.xp-R.xp0} XP · level ${level()} (${LEVELS[level()-1]})</p><div class="actions" style="justify-content:flex-start"><button class="btn primary" id="again">Play again</button><button class="btn" id="tomissed">Missed pile</button><button class="btn ghost" id="home">Back to units</button></div></div>
- ${R.missed.length?`<h2 style="margin-top:24px">Review what you missed</h2><div class="missed">${R.missed.map(m=>`<div class="card"><div class="qunit">${unitName(m.u)}</div><p>${m.q}</p>${m.code?`<pre class="seq">${m.code}</pre>`:""}<p class="no-t">Yours: ${escapeHTML(String(m.yours||""))}</p><p class="ok-t">Answer: ${m.type==="text"?m.answer:m.correct}</p>${/\n/.test(m.e)?`<pre class="seq" style="color:var(--fg)">${m.e}</pre>`:`<p>${m.e}</p>`}</div>`).join("")}</div>`:`<p class="sub" style="margin-top:16px">No misses. Try the boss exam.</p>`}`}
+ ${R.missed.length?`<h2 style="margin-top:24px">Review what you missed</h2><div class="missed">${R.missed.map(m=>`<div class="card"><div class="qunit">${unitName(m.u)}</div><p>${m.q}</p>${m.code?`<pre class="seq">${m.code}</pre>`:""}<p class="no-t">Yours: ${escapeHTML(String(m.yours||""))}</p><p class="ok-t">Answer: ${m.type==="text"||m.type==="tap"?m.answer:m.correct}</p>${m.type==="tap"?`<div class="dg answered">${m.svg.replace(/class="hs" data-hit="([^"]+)"/g,(x,id)=>m.correct.includes(id)?`class="hs right" data-hit="${id}"`:x).replace(/tabindex="0"/g,'tabindex="-1"')}</div>`:""}${/\n/.test(m.e)?`<pre class="seq" style="color:var(--fg)">${m.e}</pre>`:`<p>${m.e}</p>`}</div>`).join("")}</div>`:`<p class="sub" style="margin-top:16px">No misses. Try the boss exam.</p>`}`}
 const escapeHTML=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 
 /* ---------------- study list ---------------- */
@@ -782,7 +1092,7 @@ function codonTable(){const N="UCAG";let h=`<table class="codon"><tr><th></th>${
 /* ---------------- views + events ---------------- */
 function show(v){["play","quiz","end","study","codons"].forEach(x=>document.getElementById("v-"+x).hidden=x!==v);const tab=v==="quiz"||v==="end"?"play":v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===tab));if(v==="play")renderPlay();if(v==="study")renderStudy();window.scrollTo(0,0)}
 function toast(msg){const el=document.createElement("div");el.textContent=msg;el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:10px 16px;border-radius:8px;z-index:20;max-width:90vw";document.body.appendChild(el);setTimeout(()=>el.remove(),2600)}
-document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+document.addEventListener("click",e=>{const hs=e.target.closest("#qcard .hs");if(hs){answerTap(hs.dataset.hit);return}const t=e.target.closest("button");if(!t)return;
  if(t.matches("nav button")){show(t.dataset.v);return}
  if(t.dataset.mode)return startRun(t.dataset.mode);
  if(t.dataset.unit)return startRun("unit",t.dataset.unit);
@@ -802,12 +1112,12 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
  if(t.id==="resetNo"){document.getElementById("resetConfirm").hidden=true;return}
  if(t.id==="resetYes"){S={xp:0,best:0,q:{},g:{}};save();document.getElementById("resetConfirm").hidden=true;renderPlay();toast("Progress erased.");return}
 });
-document.addEventListener("keydown",e=>{if(document.getElementById("v-quiz").hidden)return;
+document.addEventListener("keydown",e=>{if(document.getElementById("v-quiz").hidden)return;const ae=document.activeElement;if(ae&&ae.classList&&ae.classList.contains("hs")&&(e.key==="Enter"||e.key===" ")){e.preventDefault();answerTap(ae.dataset.hit);return}
  if(e.key==="Enter"){if(document.activeElement&&document.activeElement.tagName==="BUTTON")return;if(R.answered){e.preventDefault();R.i++;nextQ()}else if(CUR.type==="text"&&document.activeElement.id==="tin"){e.preventDefault();answerText()}return}
  if(CUR&&CUR.type==="mc"&&!R.answered&&/^[1-4]$/.test(e.key)){const i=+e.key-1;if(i<CUR.opts.length)answerMC(i)}});
 document.getElementById("filter").addEventListener("input",applyFilter);
 document.getElementById("codonTable").innerHTML=codonTable();
 renderPlay();
 </script>
-
-</body></html>
+</body>
+</html>
