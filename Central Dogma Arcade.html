@@ -1,0 +1,813 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Central Dogma Arcade</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a gel-imager console — dark indigo "gel", amber glowing bands for progress, cyan UV for interaction */
+:root{
+  --bg:#0e1022; --panel:#161936; --panel2:#1e2246; --line:#2d3266; --fg:#ecebf7; --muted:#a1a3c8;
+  --band:#ffa53d; --band-dim:#5a3f22; --uv:#7fd6ff; --good:#62e3a5; --bad:#ff7088; --good-bg:#123a2c; --bad-bg:#3d1621;
+  --f-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme:dark;
+}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--f-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:980px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-block:20px 12px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand h1{font:800 clamp(24px,4.5vw,34px)/1 var(--f-display);margin:0;letter-spacing:-.01em}
+.brand small{display:block;color:var(--muted);font:500 12px/1.3 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
+.lane{width:18px;height:38px;border:1px solid var(--line);border-radius:3px;position:relative;background:var(--panel)}
+.lane i{position:absolute;left:2px;right:2px;height:3px;border-radius:2px;background:var(--band);box-shadow:0 0 8px var(--band)}
+.stats{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font:500 13px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.chip b{color:var(--fg);font-weight:600}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+nav button{background:none;border:0;color:var(--muted);font:600 15px var(--f-body);padding:10px 14px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--band)}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--uv);outline-offset:2px}
+h2{font:800 22px/1.2 var(--f-display);margin:0 0 4px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 16px;font-size:15px}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:28px}
+.mode{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;text-align:left;color:var(--fg);cursor:pointer;display:flex;flex-direction:column;gap:6px;min-width:0}
+.mode:hover{border-color:var(--uv)}
+.mode strong{font:700 18px var(--f-display)}
+.mode span{color:var(--muted);font-size:14px}
+.mode .tag{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--band)}
+.units{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.unit{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.unit h3{font:700 16px/1.3 var(--f-display);margin:0}
+.unit .src{color:var(--muted);font:12px var(--f-mono)}
+.gel{display:flex;gap:3px;height:10px}
+.gel i{flex:1;border-radius:2px;background:var(--band-dim)}
+.gel i.on{background:var(--band);box-shadow:0 0 6px rgba(255,165,61,.6)}
+.urow{display:flex;justify-content:space-between;align-items:center;gap:8px;font:13px var(--f-mono);color:var(--muted)}
+.btn{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:600 14px var(--f-body);cursor:pointer}
+.btn:hover{border-color:var(--uv)}
+.btn.primary{background:var(--band);color:#2a1700;border-color:var(--band)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:none}
+.skills{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:8px}
+.skill{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;text-align:left;color:var(--fg);cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.skill:hover{border-color:var(--uv)}
+.skill small{color:var(--muted);font:12px var(--f-mono)}
+.qtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.qtop .meta{font:13px var(--f-mono);color:var(--muted)}
+.bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-bottom:18px}
+.bar i{display:block;height:100%;background:var(--uv);transition:width .3s}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0}
+.qunit{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--band);margin-bottom:8px}
+.qtext{font-size:18px;line-height:1.5;margin:0 0 14px;max-width:68ch}
+pre.seq{font:15px/1.6 var(--f-mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;margin:0 0 16px;white-space:pre;color:var(--uv)}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:12px 14px;cursor:pointer;font:15px/1.45 var(--f-body)}
+.opt:hover:not(:disabled){border-color:var(--uv)}
+.opt kbd{font:600 12px var(--f-mono);color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 6px;flex:none}
+.opt .t{min-width:0;overflow-wrap:anywhere}
+.opt.mono .t{font-family:var(--f-mono);font-size:14px}
+.opt.right{border-color:var(--good);background:var(--good-bg)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.opt:disabled{cursor:default}
+.tin{display:flex;gap:8px;flex-wrap:wrap}
+.tin input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--fg);font:16px var(--f-mono);padding:10px 12px}
+.tin input:focus{border-color:var(--uv);outline:none}
+.hint{color:var(--muted);font-size:13px;margin-top:6px}
+.err{color:var(--bad);font-size:13px;margin-top:6px}
+.fb{margin-top:16px;border-radius:10px;padding:14px 16px;border:1px solid}
+.fb.ok{border-color:var(--good);background:var(--good-bg)}
+.fb.no{border-color:var(--bad);background:var(--bad-bg)}
+.fb h4{margin:0 0 6px;font:700 16px var(--f-display)}
+.fb p{margin:0 0 6px}
+.fb pre{font:13px/1.55 var(--f-mono);white-space:pre;overflow-x:auto;margin:6px 0 0;color:var(--fg)}
+.actions{display:flex;gap:8px;justify-content:space-between;margin-top:16px;flex-wrap:wrap}
+.endnum{font:800 56px/1 var(--f-display);color:var(--band)}
+.missed{display:grid;gap:10px;margin-top:16px}
+.missed .card{padding:14px 16px}
+.missed .card p{margin:4px 0}
+.ok-t{color:var(--good)} .no-t{color:var(--bad)}
+.study-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.study-tools input{flex:1;min-width:200px;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--fg);font:15px var(--f-body);padding:9px 12px}
+details.sec{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:10px}
+details.sec>summary{cursor:pointer;padding:14px 16px;display:flex;justify-content:space-between;gap:10px;align-items:center;list-style:none}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary h3{margin:0;font:700 17px/1.3 var(--f-display)}
+details.sec>summary .src{color:var(--muted);font:12px var(--f-mono)}
+details.sec[open]>summary{border-bottom:1px solid var(--line)}
+.secbody{padding:4px 18px 16px}
+.secbody h4{font:600 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--band);margin:18px 0 6px}
+.secbody ul{margin:0;padding-left:20px;max-width:75ch}
+.secbody li{margin:4px 0}
+.secbody code,.qtext code,.fb code,.opt code{font-family:var(--f-mono);font-size:.92em;color:var(--uv)}
+.secbody table{border-collapse:collapse;font-size:14px;margin:6px 0}
+.tblwrap{overflow-x:auto}
+.secbody td,.secbody th{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+.secbody th{color:var(--muted);font-weight:600}
+mark{background:var(--band);color:#2a1700;border-radius:2px}
+.codon{border-collapse:collapse;font:13px/1.35 var(--f-mono);width:100%;min-width:560px}
+.codon th,.codon td{border:1px solid var(--line);padding:6px 8px;vertical-align:top}
+.codon th{color:var(--band);font-size:15px}
+.codon .stop{color:var(--bad)} .codon .start{color:var(--good)}
+.ctoggle{margin-top:14px}
+@media (max-width:520px){.qtext{font-size:17px}.card{padding:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="brand">
+    <div class="lane" aria-hidden="true"><i style="top:6px"></i><i style="top:15px"></i><i style="top:27px"></i></div>
+    <div><h1>Central Dogma Arcade</h1><small>7.012 · Exam II · every lecture + recitation</small></div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+<nav role="tablist">
+  <button role="tab" data-v="play" aria-selected="true">Play</button>
+  <button role="tab" data-v="study" aria-selected="false">Study list</button>
+  <button role="tab" data-v="codons" aria-selected="false">Codon table</button>
+</nav>
+
+<main>
+<section id="v-play">
+  <h2>Pick a run</h2>
+  <p class="sub">Concept questions cover every topic. Drills generate fresh sequences every time, so you can't memorize them.</p>
+  <div class="modes" id="modes"></div>
+  <h2>Units</h2>
+  <p class="sub">Each band lights up as you master items. Mastered means your last answer was right and you've gotten it right at least twice, or right with no misses. For a drill, it means 3 right in a row.</p>
+  <div class="units" id="units"></div>
+  <h2 style="margin-top:28px">Skill lab</h2>
+  <p class="sub">Endless practice on one problem type, with a new sequence every time.</p>
+  <div class="skills" id="skills"></div>
+  <div style="margin-top:28px"><button class="btn ghost" id="reset">Reset all progress</button> <span id="resetConfirm" hidden><span class="hint" style="display:inline">Erase everything?</span> <button class="btn" id="resetYes">Yes, erase</button> <button class="btn ghost" id="resetNo">Cancel</button></span></div>
+</section>
+
+<section id="v-quiz" hidden>
+  <div class="qtop"><div class="meta" id="qmeta"></div><button class="btn ghost" id="quit">End run</button></div>
+  <div class="bar"><i id="qbar" style="width:0"></i></div>
+  <div class="card" id="qcard"></div>
+</section>
+
+<section id="v-end" hidden></section>
+
+<section id="v-study" hidden>
+  <h2>Everything on Exam II</h2>
+  <p class="sub">Organized by lecture, with the recitation problems folded in. Search to jump to a term.</p>
+  <div class="study-tools"><input id="filter" type="search" placeholder="Search: Okazaki, PAM, ddNTP, telomerase…" aria-label="Search the study list"><button class="btn" id="expand">Expand all</button><button class="btn ghost" id="collapse">Collapse all</button></div>
+  <div id="study"></div>
+</section>
+
+<section id="v-codons" hidden>
+  <h2>Codon table (mRNA, 5′→3′)</h2>
+  <p class="sub">Rows are the first base, columns the second, and each cell lists the third. <span style="color:var(--good)">AUG</span> is the start codon (Met). <span style="color:var(--bad)">UAA, UAG, UGA</span> are stops.</p>
+  <div class="tblwrap" id="codonTable"></div>
+</section>
+</main>
+</div>
+
+<script>
+/* ---------------- units + study list ---------------- */
+const UNITS = [
+{id:"her", name:"DNA is the hereditary material", src:"Mol Bio 1 · recitation", sections:[
+ ["Griffith (1928): transformation",[
+  "<i>Streptococcus pneumoniae</i>. <b>Smooth (S)</b> strains have a capsule and are virulent. <b>Rough (R)</b> strains have no capsule and are harmless.",
+  "Live S → mouse dies. Live R → mouse lives. Heat-killed S → mouse lives.",
+  "<b>Heat-killed S + live R → mouse dies, and live S bacteria are recovered from it.</b> Something from the dead S cells permanently converted R into S. This is <b>transformation</b>, and the unknown substance was called the \"transforming principle.\"",
+  "The change is heritable: the converted cells' descendants stay S."]],
+ ["Avery, MacLeod & McCarty (1944): the transforming principle is DNA",[
+  "They purified the active fraction from heat-killed S cells, with no mice involved, and tested whether it transformed R cells in culture.",
+  "Treating the extract with <b>protease</b> or <b>RNase</b> left transformation intact. <b>DNase destroyed it.</b> So the principle is DNA.",
+  "Its chemical makeup also matched DNA (high phosphorus, the right ratios)."]],
+ ["Hershey & Chase (1952): phage DNA enters the cell",[
+  "T2 bacteriophage is just protein (the coat) plus DNA.",
+  "<b>³⁵S labels protein</b>: sulfur is in Cys and Met and absent from DNA. <b>³²P labels DNA</b>: phosphorus is in the backbone and absent from amino acids.",
+  "Steps: infect <i>E. coli</i> → <b>blender</b> shears the coats off → <b>centrifuge</b>. The <b>pellet</b> is the bacteria and the <b>supernatant</b> is the empty coats (\"ghosts\").",
+  "Result: <b>³²P ends up in the pellet, ³⁵S in the supernatant.</b> Some progeny phage carry ³²P; none carry ³⁵S.",
+  "Assumptions: P is only in DNA and S only in protein; the blender removes the coats without bursting the cells; the centrifuge separates cleanly; and whatever enters the cell is the genetic material.",
+  "If the blender is skipped, both labels end up in the pellet. If it's too harsh, the cells burst and ³²P leaks into the supernatant."]],
+ ["Why DNA (not protein) makes a good hereditary molecule",[
+  "<b>Complementary pairing</b> lets each strand template a copy of the other. Amino acids have no pairing rule.",
+  "It is chemically <b>stable</b> (no 2′-OH), and the second strand is a <b>backup copy</b>, which makes error checking and repair possible."]]
+]},
+{id:"struct", name:"Nucleotides & the double helix", src:"Mol Bio 1 · recitation", sections:[
+ ["Building blocks",[
+  "<b>Nucleotide</b> = sugar + nitrogenous base + 1–3 phosphates. A <b>nucleoside</b> is sugar + base only.",
+  "Sugar carbons are numbered 1′ to 5′. The base attaches at <b>1′</b>. The <b>2′</b> carbon has an OH in RNA (ribose) and an H in DNA (deoxyribose: \"de-oxy\" = minus an oxygen). The <b>3′-OH</b> is where the next nucleotide attaches. The <b>5′</b> carbon (the CH₂ outside the ring) carries the phosphates.",
+  "Phosphates are named α (closest to the sugar), β, γ.",
+  "<b>Purines</b> (2 rings): A, G. <b>Pyrimidines</b> (1 ring): C, T (DNA), U (RNA).",
+  "Information capacity: 4ⁿ possible sequences for a stretch of n nucleotides."]],
+ ["The phosphodiester bond (how chains grow)",[
+  "The chain's free <b>3′-OH attacks the α-phosphate</b> of the incoming dNTP. β + γ leave as <b>pyrophosphate (PPi)</b>, and that releases the energy.",
+  "The α-phosphate now bridges 3′ carbon to 5′ carbon (3′–O–P–O–5′). That is the <b>phosphodiester bond</b>, which is covalent and runs along the backbone.",
+  "So a strand has a <b>5′ end</b> (free phosphate) and a <b>3′ end</b> (free OH). New nucleotides are always added at the 3′ end, meaning synthesis runs <b>5′→3′</b>.",
+  "<b>H-bonds</b> hold the two strands together (across the ladder). <b>Phosphodiester bonds</b> link nucleotides within a strand (along it)."]],
+ ["The double helix (Watson & Crick 1953, using Franklin's X-ray data and Chargaff's rules)",[
+  "Two <b>antiparallel</b> strands: one runs 5′→3′ left to right, the partner 3′→5′.",
+  "Sugar-phosphate backbone on the <b>outside</b>, bases stacked <b>inside</b>. Right-handed, ~10 bp per turn, major and minor grooves.",
+  "<b>A–T: 2 H-bonds. G–C: 3 H-bonds.</b> GC-rich DNA is harder to melt apart.",
+  "Every pair is purine + pyrimidine, so the helix has a constant width.",
+  "Only the bases H-bond with the partner strand. Backbone oxygens H-bond with water and proteins.",
+  "Pauling's triple helix was wrong: it put the negatively charged phosphates inside, where they would repel.",
+  "Why the structure mattered: each strand is a template for the other, which suggests a copying mechanism; copying errors explain mutations."]],
+ ["Chargaff's rules + sequence writing",[
+  "In double-stranded DNA: <b>A = T, G = C</b>, and purines = pyrimidines = 50%. Example: 12% G → C = 12%, A = T = 38%.",
+  "If a genome breaks these rules (e.g., A ≠ T), it is <b>single-stranded</b>. In single-stranded RNA or DNA, one region's composition tells you nothing about another, except within a base-paired stem.",
+  "Sequences are written <b>5′→3′</b> unless labeled. To get the complementary strand, <b>complement each base, then reverse</b>: 5′-ACTGTAAC-3′ → 5′-GTTACAGT-3′."]],
+ ["RNA vs DNA",[
+  "RNA: ribose (2′-OH), U instead of T, usually single-stranded, folds into stem-loops by pairing with itself (H-bonds in the stem; the loop is unpaired).",
+  "The 2′-OH makes RNA <b>more chemically reactive</b>: it can attack its own backbone. Good for short-lived messages, bad for long-term storage.",
+  "Main RNA types: mRNA (message), tRNA (adapter), rRNA (ribosome). miRNA and siRNA are regulatory."]]
+]},
+{id:"repl", name:"DNA replication & fidelity", src:"Mol Bio 2 · recitation", sections:[
+ ["Three models + Meselson–Stahl (1958)",[
+  "<b>Semi-conservative</b>: each daughter helix = 1 old strand + 1 new. <b>Conservative</b>: the original helix stays intact and an entirely new helix is made. <b>Dispersive</b>: every strand is a patchwork of old and new.",
+  "Grow <i>E. coli</i> in heavy ¹⁵N, switch to light ¹⁴N, then separate DNA by density in a CsCl gradient.",
+  "<b>Generation 1: one hybrid band</b>. This rules out conservative, which predicts heavy + light.",
+  "<b>Generation 2: hybrid + light</b>. This rules out dispersive, which predicts one band between hybrid and light.",
+  "General rule: after n generations there are 2ⁿ molecules and exactly 2 are hybrid, so 2/2ⁿ hybrid and the rest light.",
+  "Exam twist: start in ¹⁴N and switch to ¹⁵N. Same logic with the labels swapped (hybrid + heavy)."]],
+ ["What DNA polymerase needs (Kornberg)",[
+  "<b>Template</b>, <b>primer with a free 3′-OH</b>, <b>all four dNTPs</b>, polymerase (+ Mg²⁺). Leave any one out and there's no synthesis.",
+  "Reads the template <b>3′→5′</b> and synthesizes the new strand <b>5′→3′</b>.",
+  "It <b>cannot start a chain from scratch</b>. Primase supplies a short RNA primer that provides the first 3′-OH.",
+  "Why not 3′→5′ synthesis: the energy-carrying triphosphate would sit on the growing chain. If it were hydrolyzed, or a wrong base were proofread away, the chain would be dead.",
+  "A nucleotide lacking a 3′-OH can be added, but nothing can follow it: chain termination.",
+  "<b>Cairns' polA mutant</b>: a cell lacking Pol I still replicates its chromosome. So Pol I isn't the main replicative polymerase (Pol III is); Pol I removes RNA primers and fills gaps. Biochemistry shows what an enzyme <i>can</i> do; genetics shows what it <i>does</i> in the cell."]],
+ ["The fork",[
+  "Replication starts at an <b>origin (ori)</b>: 1 in bacteria (circular chromosome), many in eukaryotes (huge linear chromosomes). Each origin opens a bubble with <b>two forks moving in opposite directions</b>.",
+  "<b>Helicase</b> unwinds the strands, breaking H-bonds. <b>Topoisomerase</b> relieves the overwinding (supercoiling) <b>ahead of the fork</b> by cutting the backbone and resealing it. <b>Primase</b> makes RNA primers. <b>DNA polymerase</b> extends them. <b>Ligase</b> seals nicks by forming the final phosphodiester bond.",
+  "<b>Leading strand</b>: continuous, grows toward the fork. <b>Lagging strand</b>: discontinuous <b>Okazaki fragments</b>, each with its own primer, made away from the fork, then primers are removed, gaps filled, and nicks ligated.",
+  "Why: strands are antiparallel and polymerase only goes 5′→3′, so one new strand must grow away from the fork.",
+  "In a bubble, the same template strand is the leading template at one fork and the lagging template at the other.",
+  "To find the leading strand at a fork, look at the template end pointing <i>into</i> the fork. If it's the template's 3′ end, the new strand grows toward the fork, so that template is leading."]],
+ ["Defective-enzyme predictions",[
+  "<div class='tblwrap'><table><tr><th>Defect</th><th>Leading</th><th>Lagging</th></tr><tr><td>Helicase</td><td>blocked</td><td>blocked (fork never opens)</td></tr><tr><td>Primase</td><td>can't start</td><td>can't start (needs primers over and over: hit hardest)</td></tr><tr><td>Ligase</td><td>~fine</td><td>unjoined Okazaki fragments pile up</td></tr><tr><td>Topoisomerase</td><td>stalls as tension builds</td><td>stalls</td></tr><tr><td>3′→5′ exonuclease</td><td colspan='2'>synthesis works, ~1000× more errors</td></tr><tr><td>Mismatch repair</td><td colspan='2'>normal synthesis, more mutations stay in</td></tr></table></div>"]],
+ ["Fidelity: three layers",[
+  "<b>Base selection</b> (the correct pair is favored, Keq ~10³) gives an error rate of ~<b>10⁻³</b>.",
+  "<b>Proofreading</b>: DNA polymerase's <b>3′→5′ exonuclease</b> removes a mismatched base at the 3′ end, since a wrong base is ~1000× more likely to be removed. That gives ~<b>10⁻⁶</b>.",
+  "<b>Mismatch repair</b>: enzymes scan for the bulge a mismatch causes, excise a stretch of the <b>new</b> strand, and resynthesize it. That gives ~<b>10⁻¹⁰</b> per base per division.",
+  "Math: 3×10⁹ bp × 10⁻¹⁰ ≈ 0.3 errors per division; × ~100 divisions in the germline ≈ <b>~30 new mutations per generation</b>.",
+  "Without mismatch repair, 10⁻⁶ × 3×10⁹ = 3000 errors per division.",
+  "Inherit one defective mismatch repair gene, lose the second copy in a colon cell, and mutations pile up there → <b>hereditary colon cancer</b>."]],
+ ["Replication summary table (recitation)",[
+  "Where: nucleus (also mitochondria and chloroplasts). Monomer: <b>dNTPs</b>. Added to: the <b>3′-OH</b> of the growing strand. Bond: <b>phosphodiester</b>. Template strands per new duplex: <b>1</b>. Template read <b>3′→5′</b>. New strand made <b>5′→3′</b> (leading and lagging)."]]
+]},
+{id:"tx", name:"Transcription & translation", src:"Mol Bio 3 · recitation", sections:[
+ ["Transcription",[
+  "<b>RNA polymerase</b> uses <b>NTPs</b>, needs <b>no primer</b>, and <b>does not proofread</b>. The bond is a phosphodiester bond, added at the 3′ end.",
+  "Gene layout: regulatory elements/enhancers (transcription factors bind) → <b>promoter</b> (where RNA polymerase binds; upstream; <b>not transcribed</b>) → <b>transcription start site</b> (first nucleotide copied) → transcribed region (5′ UTR, coding sequence, 3′ UTR) → termination signal.",
+  "The <b>promoter's orientation decides which strand is the template</b>. Different genes can use different strands.",
+  "The template is read <b>3′→5′</b> and the RNA is made <b>5′→3′</b>, complementary and antiparallel to the template.",
+  "mRNA = the <b>coding (non-template) strand</b> with T→U. So mRNA = the template's reverse complement.",
+  "In eukaryotes it happens in the nucleus (plus mitochondria and chloroplasts)."]],
+ ["Recitation: gene X promoter rules",[
+  "Transcription starts at the first base pair after the promoter, in the arrow's direction.",
+  "If the arrow points right, the RNA grows left→right 5′→3′, so the template is the strand running 3′→5′ left to right: the <b>bottom</b>. The mRNA matches the top.",
+  "If the arrow is reversed (points left), the template is the <b>top</b> strand, and the mRNA matches the bottom strand read right to left."]],
+ ["The genetic code",[
+  "A codon is 3 nucleotides: 64 codons = 61 sense + <b>3 stops (UAA, UAG, UGA)</b>. <b>AUG = start = Met</b>.",
+  "<b>Redundant</b> (most amino acids have several codons, often differing at the 3rd base) but <b>not ambiguous</b> (each codon means one thing).",
+  "<b>Nearly universal</b>, which is why a human cDNA expressed in <i>E. coli</i> gives the right protein.",
+  "The <b>first AUG sets the reading frame</b>; translation continues in triplets until a stop codon."]],
+ ["Translation",[
+  "The ribosome (rRNA + protein; <b>rRNA catalyzes</b> the peptide bond) reads mRNA <b>5′→3′</b>.",
+  "Each <b>tRNA</b> carries one amino acid (aminoacyl-tRNA). Its <b>anticodon pairs antiparallel</b> with the codon: codon 5′-AUG-3′ ↔ anticodon 3′-UAC-5′ (= 5′-CAU-3′).",
+  "Protein grows <b>N-terminus → C-terminus</b>. The mRNA's 5′ end corresponds to the N-terminus.",
+  "Labeling diagram: polypeptide, tRNA, amino acid, anticodon, codon, mRNA (5′ and 3′ ends), ribosome."]],
+ ["DNA → protein procedure (the classic problem)",[
+  "1) Find which strand has <b>ATG reading 5′→3′</b>. That's the coding strand. (If the template is given, the coding strand is the other one.)",
+  "2) mRNA = coding strand with U. 3) Start at the first AUG and read triplets until a stop. 4) Write the protein N→C.",
+  "Recitation gene: <code>5′ CGCTTATAGAACCCAATCTCTCATAGGC 3′</code>. The top has no ATG; the bottom read 5′→3′ is <code>GCCTATGAGAGATTGGGTTCTATAAGCG</code>. Protein: <b>N–Met–Arg–Asp–Trp–Val–Leu–C</b> (stop = TAA). The second amino acid's anticodon (codon AGA) is <b>3′-UCU-5′</b>."]],
+ ["Mutations",[
+  "<b>Synonymous (silent)</b>: codon changes, amino acid doesn't (often 3rd position). <b>Missense</b>: a different amino acid. <b>Nonsense</b>: becomes a stop → truncated protein.",
+  "<b>Frameshift</b>: insertion or deletion not a multiple of 3. Every downstream codon changes, usually hitting a premature stop. Indels of 3n add or remove amino acids in frame.",
+  "Recitation Mutation Effects: the frame <code>GCT(373) AAG TAT TGC TCA AGA TTA GGA(380) TGA</code> stops at codon 381. To get <b>381 aa</b>: change the TGA stop to a sense codon (e.g., TGA→TGG Trp) so the next TAA ends it. To get <b>373 aa</b>: insert a T after GCT so the next codon reads <b>TAA</b> (stop at 374)."]]
+]},
+{id:"var", name:"Variations: eukaryotes, telomeres, viruses", src:"Mol Bio 4 · recitation", sections:[
+ ["Prokaryotes vs eukaryotes",[
+  "<div class='tblwrap'><table><tr><th></th><th>Prokaryotes</th><th>Eukaryotes</th></tr><tr><td>Genome</td><td>circular, 1 ori</td><td>linear, many oris</td></tr><tr><td>Where</td><td>transcription + translation together in the cytoplasm (coupled)</td><td>transcription and processing in the nucleus, translation in the cytoplasm</td></tr><tr><td>mRNA</td><td><b>polycistronic</b>: several ribosome-binding sites/start codons, several proteins</td><td>usually one protein per mRNA</td></tr><tr><td>Processing</td><td>none, no introns</td><td>5′ cap, poly(A) tail, splicing</td></tr></table></div>"]],
+ ["Eukaryotic mRNA processing",[
+  "<b>5′ cap</b>: a methylated G attached by an unusual <b>5′–5′ linkage</b>. Needed for stability, export from the nucleus, and ribosome binding.",
+  "<b>Poly(A) tail</b>: the RNA is cleaved after the <b>AAUAAA</b> signal and poly(A) polymerase adds ~200 A's. Needed for stability.",
+  "<b>Splicing</b>: introns out, exons joined (nascent/pre-mRNA → mature mRNA). Done by the <b>spliceosome</b>, an RNA–protein complex in which <b>RNA does the catalysis</b>.",
+  "<b>Alternative splicing</b>: one gene, several mRNAs, several proteins (90–95% of human genes). <b>Exon shuffling</b>: exons recombine into new genes over evolution."]],
+ ["Telomeres: the end-replication problem",[
+  "At the tip of a linear chromosome, the lagging strand's last RNA primer is removed and there's no upstream 3′-OH to fill the gap. The chromosome shortens every round.",
+  "<b>Telomeres</b> are TTAGGG repeats. <b>Telomerase</b> extends them using its <b>own RNA template</b>, which makes it a reverse transcriptase. It's active in germline and stem cells and in cancer.",
+  "Bacteria don't have this problem: their chromosomes are circular."]],
+ ["Viruses",[
+  "Obligate parasites: a capsid plus a genome (DNA or RNA, single- or double-stranded). They use the host's ribosomes.",
+  "<b>DNA viruses</b> (single-stranded DNA is common) use the host's DNA polymerase.",
+  "<b>+RNA</b>: the genome <i>is</i> an mRNA and gets translated immediately, so <b>naked RNA is infectious</b>. It encodes its own RNA-dependent RNA polymerase (RdRp).",
+  "<b>−RNA</b>: host cells have no RdRp, so the virus must <b>package its own RdRp</b>. Naked RNA is not infectious.",
+  "<b>Retrovirus (HIV)</b>: RNA genome; carries <b>reverse transcriptase</b> (RNA → DNA). The DNA integrates into the host genome.",
+  "<b>Overlapping reading frames</b>: one stretch encodes 2–3 proteins in different frames, packing more information into a tiny genome."]],
+ ["Recitation fill-in answers",[
+  "<b>Eukaryotic</b> organisms contain <b>telomeres</b> at the ends of linear chromosomes. Prokaryotes have <b>circular</b> chromosomes. Single-stranded DNA is common in <b>viruses</b>. Retroviruses have <b>RNA</b> genomes, undergo <b>reverse transcription</b> to make <b>DNA</b>, which integrates. Bacterial mRNA is <b>polycistronic</b> (multiple <b>proteins/genes</b> per mRNA). Viruses have multiple <b>overlapping reading frames</b>."]]
+]},
+{id:"clone", name:"Recombinant DNA I: enzymes, vectors, libraries", src:"Rec DNA 1 · cloning recitation", sections:[
+ ["Why cloning is needed",[
+  "A protein can be purified by its unique size, charge, binding, or activity. A <b>gene is chemically identical to all other DNA</b> (same backbone, same 4 bases) and is a tiny fraction of the genome (~1 kb out of 3×10⁹ bp). So you can't purify it by its properties.",
+  "Instead you <b>clone</b> it: cut the genome into pieces, put one piece into each vector, and let bacteria separate and amplify them (one colony = one piece, many copies)."]],
+ ["Restriction enzymes",[
+  "Bacterial <b>endonucleases</b> that defend against phage. The bacterium's own sites are protected by methylation.",
+  "They recognize specific 4–8 bp <b>palindromic</b> sites (the same sequence reading 5′→3′ on both strands, e.g. 5′-GAATTC-3′ / 3′-CTTAAG-5′) and cut the phosphodiester backbone.",
+  "Ends: <b>5′ overhang</b> (EcoRI G^AATTC → AATT; BamHI G^GATCC → GATC), <b>3′ overhang</b> (PstI CTGCA^G; KpnI GGTAC^C), or <b>blunt</b> (SmaI CCC^GGG; EcoRV GAT^ATC). In a drawing, if the top strand is cut to the left of the bottom strand's cut, the overhang is 5′.",
+  "Sticky ends ligate only to <b>matching overhangs</b>. BamHI (G^GATCC) and BglII (A^GATCT) both leave GATC, so they're compatible. Any blunt end ligates to any blunt end (less efficiently).",
+  "Expected frequency: a 4-bp site every 4⁴ = 256 bp, a 6-bp site every 4⁶ = 4096 bp on average.",
+  "Digest math: n cuts in <b>linear</b> DNA → n+1 fragments. n cuts in a <b>circle</b> → n fragments. A plasmid cut once → one band the full plasmid size. Fragment sizes always add up to the total."]],
+ ["DNA ligase",[
+  "Joins two DNA pieces by forming a <b>phosphodiester bond</b> (seals nicks, uses ATP). Works on sticky and blunt ends. (Also seals Okazaki fragments in replication.)"]],
+ ["Vectors (plasmids)",[
+  "Required: an <b>origin of replication</b> (so the plasmid is copied and inherited), a <b>selectable marker</b> (e.g., Amp<sup>R</sup>), and a <b>cloning site</b> (unique restriction site or multiple cloning site). For expression, add a <b>promoter</b> the host recognizes. Optional reporters: <i>lacZ</i> (blue on X-gal) or GFP.",
+  "<b>Bacterial vs yeast vectors</b>: a yeast vector needs a yeast origin (plus a centromere to be stable) and a yeast marker, usually a nutritional gene (e.g., URA3, LEU2) that rescues a mutant yeast strain. Antibiotic markers are typical for bacteria. <b>Shuttle vectors</b> carry both sets.",
+  "<b>Transformation</b>: cells take up the plasmid (rarely). Plate on the drug: only cells with the plasmid grow. One colony ≈ 2–3 billion cells from one transformed cell.",
+  "<b>Insertional inactivation</b>: an insert inside a marker gene destroys it. Recitation: Gene A goes into the KpnI site inside Tet<sup>R</sup>, so recombinant cells are Amp<sup>R</sup> but Tet-<i>sensitive</i>. <b>Plate on ampicillin only.</b> Ampicillin + tetracycline kills the recombinants. No antibiotic lets everything grow.",
+  "Blue/white: an insert in <i>lacZ</i> gives <b>white</b> colonies (no functional β-gal), so white = has insert.",
+  "<b>Directional cloning</b>: cut with two different enzymes so the insert can only go in one way and the vector can't close on itself. With one enzyme, the insert goes in either orientation."]],
+ ["Recitation: digest → map the plasmid",[
+  "3 kb vector + 2 kb KpnI–KpnI Gene A insert = 5 kb recombinant. A <b>KpnI</b> digest gives <b>3 kb + 2 kb</b> (the insert drops out), the same for both colonies.",
+  "<b>SalI</b>: one site in the vector, ~1 kb from KpnI, and one in the insert, 0.5 kb from one end. Depending on orientation, the two SalI sites are 1 + 0.5 = 1.5 kb apart (bands 1.5 + 3.5) or 1 + 1.5 = 2.5 kb apart (two 2.5 kb pieces = one thick band). <b>Colony A</b> (one thick 2.5 kb band) and <b>colony B</b> (3.5 + 1.5) have the insert in opposite orientations."]],
+ ["DNA libraries",[
+  "<b>Genomic library</b>: cut all genomic DNA (often a partial digest), ligate the fragments into vectors, transform. A collection of clones that together cover the genome.",
+  "<b>cDNA library</b>: isolate mRNA from a tissue (poly(A) tail) → <b>reverse transcriptase</b> (from retroviruses) makes cDNA → make it double-stranded → clone into vectors. It contains <b>only the genes expressed in that tissue</b>, with <b>no introns</b>, at abundances that reflect expression.",
+  "Vector requirements for a library: ori + marker + cloning site. For expression screening, a host <b>promoter</b>. For complementation in yeast, yeast ori + yeast marker (shuttle vector).",
+  "<b>Limitations of a genomic library</b>: includes introns (bacteria can't splice, so the protein can't be expressed in <i>E. coli</i>), mostly non-coding DNA, large genes may not fit in one clone, many clones are needed to cover the genome, and it tells you nothing about which genes are expressed.",
+  "Why cDNA: it can express a eukaryotic protein in bacteria, has smaller inserts, is enriched for expressed genes, and gives the mature coding sequence."]]
+]},
+{id:"seq", name:"Recombinant DNA II: screening, gels, Sanger, PCR", src:"Rec DNA 2 · cloning recitation", sections:[
+ ["Finding your gene in a library",[
+  "<b>Cloning by complementation</b>: transform a <b>mutant</b> (e.g., yeast arg1, which can't make arginine) with a <b>wild-type library</b>. Plate on medium lacking arginine. Only cells that got the plasmid carrying the working gene grow. Recover the plasmid and sequence it.",
+  "Requires a recessive loss-of-function mutant with a <b>selectable phenotype</b>, an organism you can transform, and a library vector that replicates and is selectable in that organism.",
+  "<b>Cloning by protein expression</b>: put a cDNA library in an expression vector (bacterial promoter) and screen colonies for the protein with an antibody or an activity assay. Use it when there's no usable mutant or the organism isn't genetically tractable (e.g., human genes).",
+  "Choose complementation when a mutant exists in a transformable organism. Choose expression when you can detect the protein but have no mutant."]],
+ ["Agarose gel electrophoresis",[
+  "DNA is negative (phosphate backbone) and runs toward the <b>positive electrode (anode)</b>. Wells sit at the negative end.",
+  "<b>Smaller fragments run farther.</b> Read sizes by comparing to a ladder (migration ~ log of size).",
+  "The recitation's gel question has the electrode labels swapped. The anode is +, the cathode is −, and DNA goes to +."]],
+ ["Sanger (dideoxy) sequencing",[
+  "A <b>ddNTP</b> has H at both 2′ and 3′, so there's <b>no 3′-OH</b> and the chain stops when one is added.",
+  "Each reaction contains template, primer, DNA polymerase, all four dNTPs, and a small amount of one ddNTP (or all four, fluorescently labeled). Chains stop randomly at every position where that base goes.",
+  "<b>Read the gel bottom (shortest) to top</b>. That gives the <b>newly synthesized strand 5′→3′</b>. The template is its reverse complement.",
+  "Product length counts the primer plus the added bases up to and including the ddNTP.",
+  "Recitation: template top 5′-GTATAGCCTCCGT-3′ with primer 5′-ACG-3′ (pairs with the top's 3′ end). The new strand is <code>ACG</code>GGAGGCTATAC… With ddATP, products end at each A: <b>6, 11, and 13 nt</b> (3 products)."]],
+ ["PCR",[
+  "Ingredients: template, <b>two primers</b>, dNTPs, a heat-stable polymerase (<b>Taq</b>, from <i>Thermus aquaticus</i>), buffer.",
+  "Each cycle: <b>denature</b> (&gt;90 °C) → <b>anneal</b> primers (~50–60 °C) → <b>extend</b> (~72 °C). About 30 cycles; copies = start × <b>2ⁿ</b>.",
+  "You must know the <b>flanking sequence</b>. The primers define the ends of the product.",
+  "<b>Primer rules</b>: both are written 5′→3′, they bind <b>opposite strands</b>, and their <b>3′ ends point toward each other</b>. Forward primer = the top strand's sequence at the left flank. Reverse primer = the <b>reverse complement</b> of the top strand at the right flank.",
+  "Recitation answer: <b>Set C</b> (5′-GAATTCGATCGA-3′ matches the top's left flank; 5′-CTAGTACGTATT-3′ is the reverse complement of the right flank).",
+  "Uses: amplify a target from a tiny sample, check a clone (insert present, orientation), diagnostics, forensics."]]
+]},
+{id:"gen1", name:"Genomics I: the human genome + sequencing tech", src:"Genomics 1 · genome recitation", sections:[
+ ["Human Genome Project",[
+  "Three maps: <b>genetic</b> (polymorphic markers), <b>physical</b> (overlapping BAC clones, ~100 kb each), and the <b>sequence</b> (hierarchical shotgun: break each BAC into subclones, sequence them, assemble by overlaps; ~30× coverage).",
+  "Draft 2000–01, \"finished\" 2003."]],
+ ["Numbers",[
+  "~3.2 billion bp. <b>~21,000 protein-coding genes</b> (predictions were 40–100k). <b>~1.5%</b> of the genome codes for protein. <b>~5–6%</b> is conserved, so most conserved DNA is non-coding (regulatory). <b>&gt;50%</b> is transposon-derived. 90–95% of genes are alternatively spliced, giving ~100,000 proteins."]],
+ ["Finding genes",[
+  "ORF scanning works in bacteria but fails in humans: exons are short (~150 bp), and a random 150 bp stretch has an ORF in some frame ~40% of the time.",
+  "Instead: map cDNAs back to the genome, and use <b>cross-species conservation</b>."]],
+ ["Conservation",[
+  "Functional sequence is under selection, so mutations there are removed: <b>65–95% identity</b> between human and mouse. Unimportant sequence drifts to ~<b>40%</b>.",
+  "Gene <b>order</b> is conserved too (synteny). Exons are conserved; intron lengths vary."]],
+ ["Gene families, pseudogenes, regulatory DNA, lncRNAs",[
+  "<b>Paralogs</b> arise by gene duplication. Example: olfactory receptors. Humans have ~850 genes, ~390 functional. Mice have ~1400, ~1100 functional. When a function matters less, selection relaxes and genes decay into <b>pseudogenes</b>.",
+  "<b>Promoters</b> sit at the start site. <b>Enhancers</b> can be far away. Short <b>conserved non-coding elements (CNEs)</b> mark regulatory DNA. Developmental transcription factor genes sit in gene deserts full of CNEs.",
+  "<b>lncRNAs</b>: made by Pol II, spliced, conserved, often scaffolds (NEAT1 → paraspeckles).",
+  "RNA polymerases: <b>Pol I → rRNA. Pol II → mRNA and lncRNA. Pol III → tRNA and other small RNAs.</b>"]],
+ ["Transposons (&gt;50% of the genome)",[
+  "<b>LINE</b> (~7 kb): its own promoter + 2 genes (reverse transcriptase/endonuclease and an insertion helper) + a 3′ UTR. It copies RNA → cDNA → new insertion and carries its promoter along.",
+  "<b>SINE</b> (~300 bp): makes no protein and <b>hijacks LINE proteins</b>, which recognize its 3′ UTR.",
+  "Also endogenous retroviruses and DNA transposons.",
+  "Traps: a SINE can't jump without active LINEs. A LINE missing its 3′ UTR can't jump (its reverse transcriptase won't recognize it)."]],
+ ["Modern sequencing (recitation)",[
+  "<b>Illumina</b>: DNA fragments are amplified into clusters (one molecule's signal is too dim). Each cycle adds one fluorescent <b>reversible terminator</b>: its 3′-OH is blocked, so exactly one base is added; image the color, then remove the block and dye. The colors read the <b>new strand 5′→3′</b>. The template is the reverse complement.",
+  "Compare to a Sanger ddNTP: no 3′-OH at all, so the stop is permanent.",
+  "<b>Nanopore</b>: a single molecule threads through a pore and the current change reads the bases. Very long reads, direct RNA, no amplification. Illumina wins on accuracy and cost per base.",
+  "Is a variant likely disease-causing? More likely if it's in a <b>highly conserved</b> region, <b>rare</b> (&lt;0.1%), or changes an amino acid. Less likely at a codon's <b>3rd position</b> (often synonymous) or in a <b>3′ UTR</b>. Non-coding variants depend on context (could hit a promoter or enhancer)."]]
+]},
+{id:"gen3", name:"Genomics III: RNA & cell types", src:"Genomics 3", sections:[
+ ["One genome, many cell types",[
+  "Every cell has the same DNA. Cell types differ in <b>which genes are on, how much, and when</b> (gene regulation), shaped by the cell's history, location, and signals.",
+  "Differentiation from stem cells. Germ layers: <b>ectoderm</b> (outer: neurons, skin), <b>mesoderm</b> (middle: heart and skeletal muscle, blood), <b>endoderm</b> (inner: lung, gut lining).",
+  "<b>Housekeeping genes</b> are on in nearly all cells (e.g., transcription and translation machinery)."]],
+ ["Levels of regulation",[
+  "<b>Transcription</b>: transcription factors bind promoters and <b>enhancers</b> (100s to 100,000s of bp away, reaching the promoter by 3D looping). The set of TFs a cell makes determines its genes, and TFs regulate each other in self-reinforcing networks.",
+  "<b>Chromatin</b>: <b>open</b> (loosely packed, accessible → genes on) vs <b>closed</b> (tightly packed → genes mostly off). Two meters of DNA fold into a 5–10 μm nucleus, and the 3D folding differs by cell type. It can be read by crosslinking, restriction cutting, and ligating nearby pieces.",
+  "<b>Post-transcriptional</b>: alternative <b>splicing</b> differs by cell type; <b>RNA stability</b> (an RNA's level depends on its synthesis rate and its degradation rate)."]],
+ ["Sonic hedgehog (SHH)",[
+  "Delete the mouse <b>limb enhancer</b>, which sits ~1 Mb from the <i>Shh</i> gene, and the mice grow <b>stumps instead of limbs</b>, even though the gene itself is intact.",
+  "Point mutations in that enhancer in humans cause <b>polydactyly</b>. Lesson: non-coding regulatory mutations can have big effects."]],
+ ["Bulk RNA-seq",[
+  "Grind the tissue → extract RNA → capture mRNA on <b>poly(T) beads</b> (they bind the poly(A) tail; rRNA washes away) → <b>reverse transcriptase</b> → cDNA → sequence → map reads to the genome → count reads per gene.",
+  "Output: a <b>gene expression vector</b> (x₁…x₂₀,₀₀₀) of counts per gene, often shown as a heat map.",
+  "Example: ALL vs AML leukemia have distinct expression signatures, which helps classify cancers and choose treatment.",
+  "Limitation: it <b>averages over all the cell types</b> in the sample (the smoothie analogy)."]],
+ ["Single-cell RNA-seq",[
+  "Microfluidics puts each cell in an oil droplet with <b>one bead</b>, reverse transcriptase, and dNTPs.",
+  "Bead DNA, 5′→3′: <b>PCR primer site</b> (identical on all beads) → <b>cell barcode</b> (the same on every strand of one bead, unique per bead: which cell) → <b>UMI</b> (random, different on every strand: which molecule, so PCR duplicates aren't double-counted) → <b>poly(T)</b> (captures poly(A) mRNA).",
+  "Lyse → the mRNA binds poly(T) → reverse transcriptase copies it into cDNA attached to the barcode → break the emulsion, pool, amplify, sequence, group reads by barcode. Result: one expression vector per cell (e.g., 50,000 cells × 20,000 genes = 1 billion entries).",
+  "Uses: discover <b>new cell types</b> (retinal bipolar cells went from 2 types to 14–16), study responses, and combine with CRISPR screens.",
+  "Traps: same barcode on every bead → can't tell cells apart (back to bulk). No UMIs → PCR duplicates inflate the counts. No poly(T) → no mRNA captured."]],
+ ["Disease uses",[
+  "Compare healthy vs diseased tissue to find disease genes and pathways. <b>Molecular signatures</b> classify cancers that look alike under a microscope, predict aggressiveness, and guide treatment. Also drug response, drug targets, aging."]]
+]},
+{id:"gen4", name:"Genomics IV: CRISPR genome editing", src:"Genomics 4", sections:[
+ ["CRISPR in bacteria: adaptive immunity",[
+  "<b>CRISPR array</b> = Clustered Regularly Interspaced Short Palindromic Repeats: repeats (21–40 bp) separated by unique <b>spacers</b> (~20–58 bp) that <b>match phage DNA</b>, a memory of past infections. Found in ~40% of bacterial genomes, next to the <b>Cas genes</b>.",
+  "Evidence: bacteria with a spacer matching a phage resist that phage. In the Danisco <i>S. thermophilus</i> (yogurt) experiment, the survivors of a phage attack had <b>gained new spacers</b> matching that phage, and adding or removing spacers changed which phages they resisted.",
+  "Machinery: the array is transcribed into <b>pre-crRNA</b> and processed into single <b>crRNAs</b> (one spacer + repeat). <b>tracrRNA</b> pairs with the repeat and binds <b>Cas9</b>. The crRNA guides Cas9 to matching DNA, and Cas9 makes a <b>double-strand break</b>.",
+  "<b>PAM</b> (protospacer adjacent motif, 2–6 bp): Cas9 <b>only cuts if a PAM sits next to the target</b>. Phage DNA has it; the bacterium's own array doesn't, so the bacterium doesn't cut itself."]],
+ ["Repairing the break (eukaryotes)",[
+  "<div class='tblwrap'><table><tr><th></th><th>NHEJ</th><th>HDR (homologous recombination)</th></tr><tr><td>Template</td><td>none: joins the ends directly</td><td>a homologous sequence (sister chromatid, or a template <b>you supply</b> with arms matching the break)</td></tr><tr><td>Accuracy</td><td>error-prone, leaves small <b>indels</b> (2–6 bp); speed over accuracy</td><td>precise</td></tr><tr><td>Use</td><td><b>knock out</b> a gene (indel → frameshift); two cuts → large deletion</td><td><b>precise edit</b>: fix a mutation, insert a sequence</td></tr></table></div>"]],
+ ["CRISPR in the lab",[
+  "Supply <b>Cas9</b> (eukaryotes don't have it) + a <b>single-guide RNA (sgRNA)</b>, which fuses crRNA (matches the target) and tracrRNA (binds Cas9) via a linker (Doudna & Charpentier, Nobel 2020). Add a <b>DNA template</b> if you want HDR. Zhang and Church got it working in human and mouse cells.",
+  "<b>Programmable</b>: change the ~20-nt guide and you change the target. The target also needs a PAM next to it.",
+  "First approved CRISPR therapy: sickle cell disease, Dec 2023."]],
+ ["Applications",[
+  "Make mutations to study gene function, build disease models, or correct disease mutations.",
+  "<b>Pooled screens</b>: a library of thousands of gRNAs, one per cell. Grow the cells and sequence the surviving gRNAs. <b>Depleted (missing) gRNAs targeted essential genes</b>, because those cells died. Combine with scRNA-seq to see each knockout's effect on the whole transcriptome.",
+  "<b>dCas9 (catalytically dead)</b>: it still goes where the guide sends it but <b>can't cut</b>. Fuse it to enzymes that open or close chromatin to turn genes on or off <b>without changing the DNA sequence</b>."]]
+]}
+];
+const TRAPS = ["Write sequences 5′→3′. For the complement, complement each base, then reverse.",
+"mRNA matches the coding (non-template) strand, with U for T.",
+"Gel: DNA runs to + and smaller runs farther. Sanger read bottom→top = the new strand 5′→3′. The template is its reverse complement.",
+"Meselson–Stahl: generation 1 rules out conservative, generation 2 rules out dispersive.",
+"Polymerase needs a primer with a 3′-OH. RNA polymerase needs no primer.",
+"Ligase defect → Okazaki fragments pile up on the lagging strand.",
+"The same template strand is leading at one fork and lagging at the other.",
+"Insert in Tet<sup>R</sup> → plate on Amp only. An insert in a marker kills that marker.",
+"Circular DNA with n cuts → n fragments. Linear → n+1.",
+"PCR primers: 3′ ends point at each other. The reverse primer is the reverse complement of the top strand.",
+"+RNA naked genome = infectious. −RNA must bring its own RdRp. Retrovirus brings reverse transcriptase.",
+"Human gene → E. coli: use cDNA (no introns) and a bacterial promoter.",
+"Knockout = NHEJ (no template). Precise edit = HDR + template. No PAM = no cut. dCas9 = no cut.",
+"scRNA-seq: barcode = which cell, UMI = which molecule, poly(T) = catches mRNA.",
+"A SINE needs LINE proteins. A LINE without its 3′ UTR can't jump."];
+
+/* ---------------- concept question bank: [unit, question, correct, [wrong], explanation] ---------------- */
+const Q = [
+["her","Griffith injects heat-killed S bacteria mixed with live R bacteria into a mouse. What happens?","The mouse dies, and live S bacteria are recovered from it",["The mouse lives, because both components are harmless alone","The mouse dies, but only R bacteria are recovered","The mouse dies, and only the heat-killed S cells are found"],"Something from the dead S cells transformed live R cells into virulent S cells, and the change was inherited. That's transformation."],
+["her","Avery, MacLeod & McCarty treated the transforming extract with different enzymes. Which treatment abolished transformation?","DNase",["Protease","RNase","Lipase"],"Only destroying DNA blocked transformation, so DNA is the transforming principle."],
+["her","In the Avery experiment, the extract still transformed R cells after RNase treatment. What does that rule out?","RNA as the transforming principle",["DNA as the transforming principle","Protein as the transforming principle","That transformation is heritable"],"If RNA were required, RNase would have destroyed the activity."],
+["her","Why does ³⁵S label phage protein but not DNA?","Sulfur is in the amino acids cysteine and methionine, and DNA contains no sulfur",["Sulfur is part of the DNA phosphate backbone","Sulfur is in deoxyribose but not ribose","Every amino acid contains sulfur, and DNA has only a little"],"The label only works because each element is unique to one molecule: S in protein (Cys, Met), P in DNA."],
+["her","Hershey–Chase: after blending and centrifuging, where is most of the ³²P?","In the pellet, with the bacteria",["In the supernatant, with the phage ghosts","Split evenly between pellet and supernatant","Lost to the air during blending"],"Phage DNA (³²P) went into the cells, which pellet. The protein coats (³⁵S) stayed outside and remained in the supernatant."],
+["her","Hershey–Chase variant: you skip the blender step. What would you see?","Both ³²P and ³⁵S in the pellet, so you can't tell which entered",["Only ³⁵S in the pellet","Only ³²P in the supernatant","No radioactivity in either fraction"],"Without shearing, the protein coats stay stuck to the bacteria and pellet with them."],
+["her","Hershey–Chase variant: the blender is so harsh it bursts the bacteria. What goes wrong?","³²P leaks into the supernatant, making it look like DNA never entered",["³⁵S moves into the pellet","Nothing changes","The phage can't attach"],"Bursting the cells releases the injected DNA into the supernatant and muddies the result."],
+["her","Phage labeled with ³²P infect bacteria. Do the progeny phage carry the label?","Some do: parental DNA is passed on, but parental coat protein is not",["None do: labels are lost during replication","All do, equally","Only if they were also labeled with ³⁵S"],"Progeny phage contain some parental DNA strands, which carry ³²P. ³⁵S never shows up in progeny."],
+["her","If protein had been the hereditary material, what would Hershey–Chase have seen?","³⁵S in the pellet and passed to progeny",["³²P in the pellet","No label anywhere","³²P and ³⁵S both in the supernatant"],"The hereditary material is whatever enters the cell and gets passed on."],
+["her","Which is the best reason protein is a poor hereditary molecule?","Amino acids have no complementary pairing, so a protein can't template its own copy",["Proteins are too small to hold information","Proteins can't be made by cells","Proteins contain phosphorus"],"DNA's A–T/G–C pairing means each strand specifies its partner, which gives it a copying mechanism."],
+["her","Why was heat-killed S alone harmless to mice?","Heat killed the bacteria, so they couldn't multiply and cause infection",["Heat destroyed the DNA completely","S bacteria are never virulent","The mouse's immune system recognizes dead cells as R"],"Dead cells can't infect. The DNA survived well enough to transform live R cells."],
+["her","Which of these was an assumption the Hershey–Chase result depended on?","The blender removes phage coats without lysing the bacteria",["Phage DNA contains sulfur","Bacteria take up the protein coats","The centrifuge separates DNA from RNA"],"If any of the assumptions failed, a label would end up in the wrong tube."],
+
+["struct","What distinguishes a DNA nucleotide's sugar from RNA's?","DNA's sugar has H instead of OH at the 2′ carbon",["DNA's sugar lacks the 3′-OH","DNA's sugar has an extra phosphate at 2′","DNA's sugar has six carbons"],"\"Deoxy\" means minus one oxygen. The 2′-OH becomes 2′-H. The 3′-OH stays because chain growth needs it."],
+["struct","Which sugar carbon carries the phosphate groups?","5′",["1′","2′","3′"],"The base is on 1′ and the phosphates hang off the 5′ CH₂ outside the ring."],
+["struct","When a dNTP joins a growing chain, which phosphate stays in the backbone?","α (closest to the sugar)",["β","γ (outermost)","All three"],"The chain's 3′-OH attacks the α-phosphate. β + γ leave as pyrophosphate."],
+["struct","What is released when a nucleotide is added to DNA, providing the energy?","Pyrophosphate (PPi)",["Water only","ATP","A free base"],"Breaking the α–β phosphate bond releases PPi."],
+["struct","Which group on the growing chain forms the new bond?","The 3′-OH of the last nucleotide",["The 5′-phosphate of the first nucleotide","The 2′-OH","The base's amino group"],"That's why synthesis goes 5′→3′ and why a primer with a free 3′-OH is required."],
+["struct","Which bases are purines?","A and G",["C and T","A and T","C and G"],"Purines have two rings (\"Pure As Gold\"). Pyrimidines (C, T, U) have one."],
+["struct","How many hydrogen bonds hold a G–C pair together?","3",["2","1","4"],"G–C has 3, A–T has 2. GC-rich DNA is harder to melt."],
+["struct","Which DNA needs a higher temperature to separate its strands?","60% GC",["40% GC","70% AT","They're identical"],"More G–C pairs means more H-bonds to break."],
+["struct","A virus genome is 25% A, 30% T, 20% G, 25% C. What can you conclude?","It is single-stranded",["It is double-stranded","It is RNA","It must be mutated"],"In double-stranded DNA, A = T and G = C. They're unequal here, so there's no complementary partner strand."],
+["struct","Why does every base pair consist of one purine and one pyrimidine?","It keeps the helix a constant width",["Purines can only H-bond with purines","It makes the strands parallel","It lets the phosphates sit inside"],"Two-ring + one-ring = the same width at every rung."],
+["struct","Why was Pauling's triple-helix model wrong?","It placed the negatively charged phosphates inside, where they would repel",["It used ribose instead of deoxyribose","It had the bases on the outside, where they would be too reactive","It had antiparallel strands"],"In the real structure, the phosphates are on the outside, facing water."],
+["struct","What does antiparallel mean?","The two strands run in opposite 5′→3′ directions",["The strands are not complementary","The strands twist left-handed","Both strands run 5′→3′ in the same direction"],"One strand runs 5′→3′ left to right and its partner 3′→5′. That's why you reverse the complement."],
+["struct","The H-bonds that hold the two strands together come from which part?","The bases only",["The phosphates","The sugars' OH groups","Both backbone and bases equally"],"Bases face inward and pair. Backbone oxygens H-bond with water."],
+["struct","Why is RNA more chemically reactive than DNA?","Its 2′-OH can attack the backbone",["It has thymine","It is double-stranded","It lacks phosphates"],"The 2′-OH makes RNA prone to self-cleavage. DNA's 2′-H makes it stable for storage."],
+["struct","Nucleoside vs nucleotide?","A nucleoside is sugar + base; a nucleotide adds phosphate(s)",["A nucleoside has phosphate; a nucleotide doesn't","They're the same thing","A nucleotide has no base"],"Nucleo-tide = has the phosphate."],
+["struct","What links adjacent nucleotides within one strand?","A covalent phosphodiester bond",["Hydrogen bonds","Ionic bonds between bases","Peptide bonds"],"H-bonds go across the helix; phosphodiester bonds go along a strand."],
+["struct","What is found at the 5′ end of a DNA strand?","A free phosphate on the 5′ carbon",["A free 3′-OH","A base with no sugar","A 2′-OH"],"The 3′ end has the free OH where new nucleotides are added."],
+["struct","An RNA hairpin's stem is stabilized mainly by what?","H-bonds between complementary bases in the folded-back strand",["Covalent bonds between the two halves","Phosphodiester bonds between bases","Hydrophobic interactions only"],"The stem is the RNA pairing with itself (A–U, G–C). (Base stacking helps too.)"],
+["struct","An RNA's loop region (unpaired) reads AUUUGUAA. Can you predict the composition of the opposite side of the loop?","No: unpaired regions have no complementarity rule",["Yes: it is the complement, UAAACAUU","Yes: it has the same composition","Yes: 50% purines"],"Only base-paired stems let you predict the partner sequence."],
+
+["repl","Meselson–Stahl: after 1 generation in ¹⁴N, there is a single hybrid band. Which model does this rule out?","Conservative",["Semi-conservative","Dispersive","None of them"],"Conservative predicts heavy + light bands. Dispersive also gives one hybrid band at generation 1, so you need generation 2."],
+["repl","Which generation of Meselson–Stahl distinguishes semi-conservative from dispersive?","Generation 2",["Generation 1","Generation 0","They can never be distinguished"],"Generation 2: semi gives hybrid + light; dispersive gives one band between hybrid and light."],
+["repl","A Kornberg reaction contains template, polymerase, and all four dNTPs, but no primer. What happens?","No synthesis: polymerase can only extend an existing 3′-OH",["Normal synthesis","Synthesis of RNA instead","Synthesis 3′→5′"],"DNA polymerase can't start chains. Primase normally provides an RNA primer."],
+["repl","Which set contains everything DNA polymerase needs to synthesize DNA?","Template, primer with a free 3′-OH, four dNTPs (+ Mg²⁺)",["Template, NTPs, ATP","Primer and dNTPs only","Template, ddNTPs, helicase"],"Leaving out any one of these stops synthesis."],
+["repl","Cairns found that a mutant lacking DNA Pol I still replicates its chromosome. What does that mean?","Pol I isn't the main replicative polymerase (it removes primers and fills gaps)",["DNA replication doesn't need a polymerase","Pol I is the only polymerase","The mutant replicates using RNA"],"The test tube shows what an enzyme can do; the mutant shows what it actually does in the cell. Pol III is the replicative enzyme."],
+["repl","In which direction does DNA polymerase read the template?","3′→5′",["5′→3′","Either direction","Only from the middle outward"],"The new strand grows 5′→3′, and the strands are antiparallel, so the template is read 3′→5′."],
+["repl","What does primase make?","Short RNA primers",["Short DNA primers","Okazaki fragments","Telomeres"],"RNA primers supply a 3′-OH. They're later replaced with DNA."],
+["repl","What is topoisomerase's job at the fork?","Relieve overwinding ahead of the fork by cutting and resealing the backbone",["Separate the strands by breaking H-bonds","Seal Okazaki fragments","Proofread mismatches"],"Helicase unwinding causes supercoiling ahead of the fork. Topoisomerase changes topology, not sequence."],
+["repl","What does helicase do?","Unwinds the double helix by breaking H-bonds between bases",["Makes RNA primers","Joins DNA fragments","Removes supercoils"],"No helicase means the fork never opens, so neither strand is copied."],
+["repl","A temperature-sensitive ligase mutant is shifted to the restrictive temperature. What accumulates?","Unjoined Okazaki fragments from the lagging strand",["Long single-stranded leading strands","RNA primers on the leading strand only","Nothing changes"],"The leading strand is one long piece. The lagging strand depends on ligase to join its many fragments."],
+["repl","Which strand is hit hardest by a primase defect?","The lagging strand, because it needs a new primer for every fragment",["The leading strand only","Neither: primase isn't needed","Only the template strands"],"Both strands need a primer to start, but the lagging strand needs one over and over."],
+["repl","What is DNA polymerase's proofreading activity?","A 3′→5′ exonuclease that removes a mismatched base at the growing 3′ end",["A 5′→3′ polymerase that adds bases faster","An endonuclease that cuts out introns","Mismatch repair after replication"],"A wrong base is ~1000× more likely to be removed. This takes the error rate from 10⁻³ to 10⁻⁶."],
+["repl","A polymerase loses its 3′→5′ exonuclease. What happens to the error rate?","It rises about 1000-fold (10⁻⁶ → 10⁻³ before mismatch repair)",["It stops synthesis entirely","It drops 1000-fold","No change"],"Synthesis still works, but nothing catches its own mistakes."],
+["repl","How does mismatch repair fix an error?","It detects the distortion, excises a stretch of the new strand, and resynthesizes it",["It reverses the phosphodiester bond chemically","It replaces the template strand","It degrades the whole chromosome"],"It acts after synthesis and brings accuracy to ~10⁻¹⁰ per base per division."],
+["repl","Why is the lagging strand made discontinuously?","Polymerase only works 5′→3′ and the strands are antiparallel, so one new strand has to grow away from the fork",["The lagging template is RNA","Helicase only unwinds one strand","Ligase is slower than polymerase"],"As the fork opens, the lagging strand restarts with new primers near the fork."],
+["repl","A nucleotide lacking a 3′-OH is added to a growing chain. Result?","Chain termination: nothing can be added after it",["Synthesis continues normally","The nucleotide is immediately removed","The chain grows 3′→5′"],"This is the principle behind Sanger ddNTPs."],
+["repl","Bacteria vs eukaryotes: replication origins?","Bacteria: one origin on a circular chromosome. Eukaryotes: many origins per linear chromosome.",["Both have exactly one","Bacteria have many, eukaryotes one","Neither uses origins"],"Eukaryotic genomes are huge. One origin would take far too long."],
+["repl","Roughly how many new mutations per human generation does a 10⁻¹⁰ error rate predict?","~30",["~3000","~0.003","~3 million"],"3×10⁹ bp × 10⁻¹⁰ ≈ 0.3 per division, × ~100 germline divisions ≈ 30."],
+["repl","In a replication bubble, a single template strand serves as what?","The leading-strand template at one fork and the lagging-strand template at the other",["Always the leading template","Always the lagging template","Not a template at all"],"The two forks move in opposite directions, so the roles flip."],
+["repl","What is DNA Pol I's main job in the cell?","Remove RNA primers and fill the gaps with DNA",["Synthesize most of the chromosome","Unwind DNA","Make RNA primers"],"Ligase then seals the remaining nick."],
+["repl","A person inherits one defective mismatch-repair gene. Why is colon cancer risk high?","Losing the second copy in a colon cell removes repair, so mutations accumulate",["The defective gene causes cancer on its own in every cell","Mismatch repair genes are oncogenes","It blocks DNA replication"],"Two hits are needed. One inherited bad copy means only one more hit is required."],
+["repl","Meselson–Stahl: cells start in ¹⁴N and switch to ¹⁵N. After 2 generations (semi-conservative), what bands?","½ hybrid, ½ heavy",["½ hybrid, ½ light","One heavy band","¼ heavy, ¾ light"],"The same logic with labels swapped. The original light strands persist in 2 hybrids, and the rest are new-new (heavy)."],
+["repl","Where in a eukaryotic cell does DNA replication occur?","Nucleus (also mitochondria and chloroplasts)",["Cytoplasm only","Ribosomes","Golgi"],"Those organelles have their own DNA."],
+
+["tx","Does RNA polymerase need a primer?","No: it starts chains from scratch at the start site",["Yes, a DNA primer","Yes, an RNA primer made by primase","Only in eukaryotes"],"That's a key difference from DNA polymerase. It also doesn't proofread."],
+["tx","What's the difference between the promoter and the transcription start site?","RNA polymerase binds the promoter (not transcribed); the start site is the first nucleotide copied into RNA",["They're the same thing","The promoter is the first codon","The start site is where the ribosome binds"],"The promoter is upstream and sets position and direction."],
+["tx","Which DNA strand has the same sequence as the mRNA (with T for U)?","The coding (non-template) strand",["The template strand","Neither strand","Whichever strand is on top"],"mRNA is complementary to the template, so it matches the other strand."],
+["tx","What determines which DNA strand is used as the template for a gene?","The orientation of the gene's promoter",["Always the bottom strand","Always the top strand","The GC content"],"Genes on the same chromosome can use different strands."],
+["tx","Which are the stop codons?","UAA, UAG, UGA",["AUG, UAA, UGA","UUU, UAG, UGA","UAA, AUG, UGG"],"AUG is the start codon (Met)."],
+["tx","Which anticodon pairs with the start codon 5′-AUG-3′?","3′-UAC-5′",["5′-UAC-3′","3′-TAC-5′","5′-AUG-3′"],"Codon and anticodon pair antiparallel. 3′-UAC-5′ is the same as 5′-CAU-3′."],
+["tx","In which direction is a protein synthesized?","N-terminus → C-terminus, as the mRNA is read 5′→3′",["C-terminus → N-terminus","Both directions at once","5′→3′ along the protein"],"The mRNA's 5′ end corresponds to the protein's N-terminus."],
+["tx","Which component of the ribosome catalyzes peptide bond formation?","rRNA",["Ribosomal proteins","tRNA","mRNA"],"The ribosome is a ribozyme."],
+["tx","\"The genetic code is redundant but not ambiguous.\" Meaning?","Several codons can code for one amino acid, but each codon codes for only one thing",["Each amino acid has one codon","Codons can code for different amino acids in different cells","Some codons code for two amino acids"],"Example: UUU is always Phe."],
+["tx","Why can a human protein be made correctly in E. coli (from a cDNA)?","The genetic code is nearly universal",["E. coli has human tRNAs","E. coli splices human introns","Proteins don't depend on codons"],"The same codons mean the same amino acids. cDNA avoids the intron problem."],
+["tx","A point mutation at the 3rd position of a codon is most likely to be what?","Synonymous (silent)",["Nonsense","Frameshift","Always missense"],"Redundancy is concentrated at the third position."],
+["tx","Inserting 3 nucleotides into a coding sequence (not creating a stop) causes what?","An in-frame insertion of one amino acid",["A frameshift","A nonsense mutation","No change to the protein"],"Indels in multiples of 3 keep the reading frame."],
+["tx","A 1-nucleotide deletion near the start of a coding sequence usually causes what?","A frameshift: every downstream codon changes, usually hitting an early stop",["A single missense change","A silent mutation","A longer protein with the same sequence"],"The reading frame shifts by one from that point on."],
+["tx","In the recitation gene (5′ CGCTTATAGAACCCAATCTCTCATAGGC 3′ / complement), what protein is made?","N–Met–Arg–Asp–Trp–Val–Leu–C",["N–Arg–Leu–stop","N–Met–Ser–Val–C","N–Leu–Val–Trp–Asp–Arg–Met–C"],"The top strand has no ATG. The bottom strand, read 5′→3′ (GCCTATGAGAGATTGGGTTCTATAAGCG), gives ATG AGA GAT TGG GTT CTA TAA."],
+["tx","In that same gene, what is the anticodon for the 2nd amino acid (codon AGA)?","3′-UCU-5′",["3′-AGA-5′","5′-AGA-3′","3′-TCT-5′"],"Pair each base antiparallel with 5′-AGA-3′: the anticodon is 3′-UCU-5′. RNA uses U, not T."],
+["tx","In that gene, the bottom-strand codon TGG (Trp) becomes TGA. What happens?","Nonsense: the protein stops after Asp (N–Met–Arg–Asp–C)",["Missense: Trp → Cys","Silent","Frameshift"],"TGA is a stop codon, so the protein is truncated."],
+["tx","Recitation: the reading frame …GCT(373) AAG … GGA(380) TGA TAA… makes a 380-aa protein. How do you get a 381-aa protein?","Mutate the TGA stop into a sense codon (e.g., TGG) so translation ends at the next TAA",["Delete the GCT codon","Change GCT to TAA","Insert one base after GCT"],"Codon 381 becomes an amino acid and codon 382 (TAA) stops."],
+["tx","Same gene: how do you get a 373-aa protein by adding one base pair?","Insert a T right after GCT (codon 373) so the next codon reads TAA",["Insert a G after TGA","Insert anything after codon 380","Insert three bases after GCT"],"GCT|T AAG… → the new codon 374 = TAA (stop), leaving 373 amino acids."],
+["tx","Where does transcription occur in a eukaryotic cell?","Nucleus (plus mitochondria and chloroplasts)",["Cytoplasm","Ribosome","Endoplasmic reticulum"],"Translation then happens in the cytoplasm."],
+["tx","What is the monomer used to build mRNA?","Ribonucleoside triphosphates (NTPs: ATP, GTP, CTP, UTP)",["dNTPs","Amino acids","ddNTPs"],"RNA uses ribose, so NTPs, not dNTPs."],
+["tx","Transcription proceeds left to right in a diagram where the top strand runs 5′→3′. Which strand is the template?","The bottom strand",["The top strand","Both","Neither"],"The RNA grows 5′→3′ left to right, antiparallel to its template, so the template runs 3′→5′ left to right: the bottom."],
+["tx","What sets the reading frame during translation?","The start codon (first AUG)",["The promoter","The poly(A) tail","The first base of the mRNA"],"From AUG, the ribosome reads non-overlapping triplets."],
+
+["var","You purify naked genomic RNA (no proteins) from a +RNA virus and a −RNA virus and inject each into cells. Which can start an infection?","Only the +RNA genome",["Only the −RNA genome","Both","Neither"],"+RNA is an mRNA and gets translated immediately. −RNA needs an RdRp packaged in the virion, and the host has none."],
+["var","What must a −RNA virus package inside its capsid?","An RNA-dependent RNA polymerase (RdRp)",["Reverse transcriptase","Host ribosomes","DNA polymerase"],"Host cells can't copy RNA from RNA."],
+["var","What enzyme does a retrovirus like HIV carry, and what does it do?","Reverse transcriptase: copies the RNA genome into DNA, which integrates into the host genome",["RdRp: copies RNA to RNA","DNA ligase: seals host DNA","Telomerase: lengthens host chromosomes"],"RNA → DNA is the reverse-transcription exception to the central dogma."],
+["var","Telomerase is best described as what?","A reverse transcriptase that carries its own RNA template",["A DNA-dependent DNA polymerase","A restriction enzyme","An RNA polymerase"],"It adds TTAGGG repeats using its internal RNA."],
+["var","Why do linear chromosomes shorten each round of replication?","The last lagging-strand primer is removed and there's no upstream 3′-OH to fill the gap",["Helicase can't reach the ends","Leading strand synthesis stops early","Ligase cuts the ends"],"Telomerase counters this in germline, stem, and cancer cells."],
+["var","Why don't bacteria have the end-replication problem?","Their chromosome is circular: no ends",["They have telomerase","They don't use primers","They replicate only once"],"No free end means no gap at the end."],
+["var","What does polycistronic mean?","One mRNA carries several start sites and encodes several proteins",["One gene makes several mRNAs by splicing","One protein comes from several mRNAs","An mRNA with a cap and a tail"],"Typical of prokaryotes."],
+["var","What does the 5′ cap do?","Stabilizes the mRNA and helps nuclear export and ribosome binding",["Signals the end of transcription","Removes introns","Adds amino acids"],"It's a methylated G joined by a 5′–5′ linkage."],
+["var","Which sequence signals cleavage and poly(A) addition?","AAUAAA",["AUG","UAA","TATA"],"After cleavage, poly(A) polymerase adds ~200 A's."],
+["var","What catalyzes the cutting and joining in splicing?","RNA in the spliceosome",["DNA ligase","Restriction enzymes","Ribosomal proteins"],"The spliceosome is an RNA–protein complex in which RNA does the chemistry."],
+["var","You clone a human gene from genomic DNA into E. coli and get no functional protein. Most likely reason?","Bacteria can't splice out the introns",["Bacteria use a different genetic code","Human genes lack promoters","E. coli has no ribosomes"],"Use a cDNA (from mature mRNA) instead."],
+["var","Why make different proteins from one gene (alternative splicing)?","More protein diversity from fewer genes, tailored by cell type",["To prevent mutations","To speed up transcription","To avoid needing a promoter"],"~21,000 genes → ~100,000 proteins."],
+["var","Why can prokaryotes start translating an mRNA before it's finished being transcribed?","There's no nucleus separating transcription and translation",["Prokaryotic ribosomes are faster","Their mRNA is double-stranded","They don't use mRNA"],"In eukaryotes, processing happens in the nucleus first."],
+["var","What advantage do overlapping reading frames give a virus?","More proteins encoded in a small genome",["Faster replication","Resistance to RdRp","No need for a capsid"],"The same nucleotides are read in different frames."],
+["var","Exon shuffling refers to what?","Exons recombining over evolution to create new genes with new domain combinations",["Splicing exons in a different order in one cell","Removing exons from mRNA","Moving exons into the 3′ UTR"],"It's an evolutionary mechanism, not a per-cell event."],
+["var","Single-stranded DNA genomes are common in which group?","Viruses",["Bacteria","Human mitochondria","Yeast"],"They replicate using the host's DNA polymerase."],
+
+["clone","Why is purifying a specific gene harder than purifying a specific protein?","A gene is chemically identical to the rest of the DNA and is a tiny fraction of it",["Genes are too large to isolate","DNA is unstable outside cells","Genes don't have sequences"],"Proteins differ in size, charge, and activity. A gene's backbone and bases are the same as all other DNA, so we clone it instead."],
+["clone","What is the natural role of restriction enzymes?","Bacterial defense: cutting invading phage DNA",["Repairing bacterial DNA","Replicating plasmids","Splicing RNA"],"The bacterium protects its own sites by methylation."],
+["clone","Which sequence is a palindromic restriction site?","5′-GAATTC-3′",["5′-GAACCT-3′","5′-AATCGG-3′","5′-GATTCC-3′"],"Its complement read 5′→3′ is also GAATTC."],
+["clone","EcoRI cuts G^AATTC. What end does it leave?","A 5′ overhang (AATT)",["A 3′ overhang","A blunt end","No cut"],"The top strand is cut after G, leaving 5′-AATT single-stranded tails."],
+["clone","Which enzyme leaves blunt ends?","SmaI (CCC^GGG)",["EcoRI (G^AATTC)","BamHI (G^GATCC)","PstI (CTGCA^G)"],"Both strands are cut at the same position, so there's no overhang."],
+["clone","BamHI (G^GATCC) and BglII (A^GATCT): can their ends be ligated together?","Yes: both leave the same GATC 5′ overhang",["No: the recognition sites differ","Only with a PCR step","Only if both are blunt"],"What matters is that the overhangs match, not the whole site."],
+["clone","On average, how often does a 6-bp restriction site occur in random DNA?","Once every 4096 bp",["Once every 256 bp","Once every 64 bp","Once every 1 million bp"],"4⁶ = 4096. For a 4-bp site, 4⁴ = 256."],
+["clone","What bond does DNA ligase form?","A phosphodiester bond",["A hydrogen bond","A peptide bond","A glycosidic bond"],"It seals the backbone nick between two fragments."],
+["clone","Which three elements must a plasmid cloning vector have?","An origin of replication, a selectable marker, and a cloning site",["A promoter, a telomere, and a centromere","An intron, an exon, and a poly(A) signal","A PAM, a guide RNA, and Cas9"],"Add a promoter only if you want expression."],
+["clone","A plasmid lacks an origin of replication. What happens after transformation?","It isn't copied and is lost as cells divide",["It integrates automatically","It replicates faster","Cells die immediately"],"The ori lets the plasmid be copied and inherited."],
+["clone","Recitation: Gene A is inserted into the KpnI site inside Tet<sup>R</sup>. The vector also has Amp<sup>R</sup>. Which plate selects transformed cells?","Ampicillin only",["Tetracycline only","Ampicillin + tetracycline","No antibiotic"],"The insert disrupts Tet<sup>R</sup>, so recombinants are Tet-sensitive. Amp selects any cell with the plasmid."],
+["clone","Recitation: a 3 kb vector + a 2 kb KpnI insert. What does a KpnI digest of the recombinant give?","3 kb + 2 kb",["5 kb only","2.5 kb + 2.5 kb","1.5 kb + 3.5 kb"],"Cutting at both KpnI sites drops the insert back out of the vector."],
+["clone","Recitation: SalI digests give colony A = one thick 2.5 kb band and colony B = 3.5 + 1.5 kb. What differs?","The insert's orientation",["Colony A has no insert","Colony B has two inserts","The vectors are different sizes"],"The SalI–SalI distance depends on which way the insert went in (1 + 1.5 vs 1 + 0.5 kb)."],
+["clone","Blue/white screening: what does a white colony mean?","The insert disrupted lacZ, so the plasmid is recombinant",["The cell has no plasmid","lacZ is overexpressed","The colony is dead"],"Functional β-gal turns X-gal blue. No β-gal means white."],
+["clone","You want to express a human protein in E. coli. Which library?","cDNA library in an expression vector",["Genomic library","Either works equally","Mitochondrial library"],"cDNA has no introns. The expression vector supplies a bacterial promoter."],
+["clone","A cDNA library from liver lacks gene X. Why might that be, even though gene X exists?","Gene X isn't expressed in liver",["Gene X has no introns","cDNA libraries only include introns","Liver cells lack DNA"],"cDNA libraries only represent mRNAs present in that tissue."],
+["clone","Which is a limitation of a genomic library?","Clones contain introns and mostly non-coding DNA, and don't show which genes are expressed",["It lacks regulatory regions entirely","It only contains expressed genes","It can't be stored"],"Human genomic clones also can't be properly expressed in bacteria."],
+["clone","How do yeast vectors usually differ from bacterial vectors?","Yeast origin (+ centromere) and a nutritional marker (e.g., URA3) instead of only a bacterial ori and antibiotic marker",["They need no origin","They use the same markers and origins","They must be linear viruses"],"Shuttle vectors carry both sets so they can move between E. coli and yeast."],
+["clone","Why cut the vector and insert with two different restriction enzymes?","Directional cloning: the insert goes in only one orientation and the vector can't re-close on itself",["To make the ends blunt","To remove the ori","To make the plasmid linear permanently"],"With one enzyme you get both orientations, plus empty vectors."],
+["clone","A 6 kb circular plasmid is cut once. What do you see on the gel?","One band at 6 kb",["Two bands at 3 kb","No band","One band at 12 kb"],"One cut linearizes the circle without removing anything."],
+["clone","Where does reverse transcriptase come from?","Retroviruses",["Bacteria's restriction systems","Human ribosomes","Phage T2"],"Retroviruses use it to copy their RNA genome into DNA."],
+["clone","The steps to make a cDNA library, in order?","Isolate mRNA → reverse transcriptase → double-stranded cDNA → ligate into vectors → transform",["Isolate DNA → restriction digest → transform → reverse transcriptase","Isolate protein → sequence → synthesize DNA","Transform → isolate mRNA → ligate"],"mRNA is often captured with oligo(dT) on the poly(A) tail."],
+
+["seq","Cloning by complementation: you transform arg1 mutant yeast with a wild-type library. How do you find the clone?","Plate on medium lacking arginine; colonies that grow carry the working ARG1 gene",["Plate on arginine; colonies that die carry ARG1","Look for blue colonies","Sequence every colony first"],"Only cells rescued by the plasmid can make their own arginine."],
+["seq","When should you use cloning by protein expression instead of complementation?","When there's no usable mutant, but you can detect the protein (antibody or activity)",["When you have a yeast mutant with a selectable phenotype","When you have no way to detect the protein","Never: complementation always works"],"Example: human genes, where you can't select mutant humans on plates."],
+["seq","Which is required for cloning by complementation?","A recessive mutant with a selectable phenotype in a transformable organism",["An antibody to the protein","A cDNA library in E. coli only","A dominant mutation"],"The library vector must also replicate and be selectable in that organism."],
+["seq","Which electrode does DNA migrate toward in a gel?","The positive electrode (anode)",["The negative electrode (cathode)","It doesn't move","Toward whichever end is closer"],"The phosphate backbone is negatively charged."],
+["seq","On an agarose gel, which fragment runs farthest?","The smallest",["The largest","They all run equally","The most GC-rich"],"Small fragments slip through the gel's pores faster."],
+["seq","What makes a ddNTP a chain terminator?","It has no 3′-OH (H at both 2′ and 3′)",["It has no base","It has no phosphates","It has an extra 3′-OH"],"It can be added, but no next nucleotide can attach."],
+["seq","You read a Sanger gel from the bottom up. What sequence does that give?","The newly synthesized strand, 5′→3′",["The template strand, 5′→3′","The new strand, 3′→5′","The primer only"],"The template is the reverse complement of what you read."],
+["seq","Which is NOT needed in a Sanger reaction?","Restriction enzyme",["Primer","Template","dNTPs + a small amount of ddNTP"],"You need template, primer, polymerase, dNTPs, and ddNTP(s)."],
+["seq","Recitation: template top strand 5′-GTATAGCCTCCGT-3′, primer 5′-ACG-3′, ddATP. What product lengths do you get?","6, 11, and 13 nt",["4, 6, and 9 nt","3, 8, and 10 nt","13 nt only"],"The new strand is ACG GGAGGCTATAC…; A falls at positions 6, 11, and 13 (counting the primer)."],
+["seq","Which PCR ingredient makes repeated cycling possible?","A heat-stable polymerase (Taq)",["Ligase","Restriction enzymes","Reverse transcriptase"],"It survives the >90 °C denaturing step every cycle."],
+["seq","What are the three steps of a PCR cycle, in order?","Denature (~95 °C) → anneal (~55 °C) → extend (~72 °C)",["Anneal → denature → extend","Extend → anneal → denature","Ligate → digest → transform"],"The strands separate, the primers bind, then polymerase extends them."],
+["seq","PCR primers must be designed so that what is true?","They bind opposite strands with their 3′ ends pointing toward each other",["They bind the same strand","Their 5′ ends point toward each other","They're identical sequences"],"Then each new strand contains the other primer's binding site, which gives exponential amplification."],
+["seq","Recitation: which primer pair amplifies the region? (left flank top: …GAATTCGATCGA, right flank top: TTAATACGTACTAG…)","Set C: 5′-GAATTCGATCGA-3′ and 5′-CTAGTACGTATT-3′",["Set A: 5′-TCGATCGAATTC-3′ and 5′-TAATACGTACTA-3′","Set B: 5′-GCTTAAGCTAGC-3′ and 5′-GATCATGCATAA-3′","None of them"],"The forward primer copies the top strand. The reverse primer is the reverse complement of the top's right flank."],
+["seq","What do you need to know before you can PCR a region?","The sequences flanking the target",["The protein sequence only","The whole genome sequence","Nothing: PCR finds genes automatically"],"The primers have to match those flanks."],
+["seq","How many copies after 10 cycles, starting from 1 double-stranded molecule (ideal)?","1024",["20","100","10"],"2¹⁰ = 1024."],
+["seq","How do you find the size of an unknown DNA fragment on a gel?","Compare its position to a ladder of known sizes run on the same gel",["Measure its brightness","Count its bases under a microscope","Weigh the gel"],"Migration distance is roughly proportional to log(size)."],
+
+["gen1","About how many protein-coding genes are in the human genome?","~21,000",["~100,000","~3 billion","~1,500"],"Far fewer than predicted (40–100k). Alternative splicing adds protein diversity."],
+["gen1","About what fraction of the human genome codes for protein?","~1.5%",["~50%","~25%","~90%"],"About 5–6% is conserved, so most functional DNA is non-coding."],
+["gen1","About what fraction of the human genome is derived from transposons?","More than 50%",["~1.5%","~10%","~95%"],"LINEs, SINEs, ERVs, and DNA transposons."],
+["gen1","Why doesn't ORF scanning work well for finding human genes?","Exons are short (~150 bp), and random stretches that long often contain ORFs by chance",["Human genes have no start codons","Human DNA has no stop codons","ORFs only exist in RNA"],"So genes are found by mapping cDNAs and by cross-species conservation."],
+["gen1","A stretch of DNA is 85% identical between human and mouse while its surroundings are ~40%. What does that suggest?","It's functional: selection has preserved it",["It's a pseudogene","It's random junk DNA","It was recently inserted by a transposon"],"Important sequences resist change. Unimportant ones drift."],
+["gen1","Humans have many olfactory receptor pseudogenes. Why?","Smell became less important, so selection relaxed and genes decayed",["Pseudogenes are needed for smell","Mice deleted the human genes","Transposons created extra working copies"],"Humans have ~850 OR genes (~390 functional); mice have ~1400 (~1100 functional)."],
+["gen1","Paralogs arise by what process?","Gene duplication within a genome",["Speciation","Splicing","Reverse transcription of viruses"],"Gene families like the olfactory receptors are paralogs."],
+["gen1","Which RNA polymerase makes mRNA and lncRNAs?","Pol II",["Pol I","Pol III","Reverse transcriptase"],"Pol I makes rRNA. Pol III makes tRNA and small RNAs."],
+["gen1","What feature of a lncRNA like NEAT1 is emphasized?","It acts as a scaffold (paraspeckles); made by Pol II, spliced, conserved",["It encodes a large protein","It's made by Pol III","It's a transposon"],"lncRNAs act as RNA, not as a template for protein."],
+["gen1","A SINE element needs what to jump?","Proteins made by an active LINE (which recognize the SINE's 3′ UTR)",["Its own reverse transcriptase gene","A restriction enzyme","DNA polymerase III"],"SINEs encode no proteins. They're parasites of parasites."],
+["gen1","A LINE element is missing its 3′ UTR. Can it still jump?","No: its reverse transcriptase must recognize the 3′ UTR",["Yes, normally","Only into SINEs","Only in bacteria"],"The LINE's proteins bind its own 3′ UTR to copy it."],
+["gen1","How did the HGP sequence the genome?","Hierarchical shotgun: overlapping BACs (~100 kb), each broken into subclones that were sequenced and assembled",["Sanger sequencing of each chromosome end to end in one read","Nanopore reads of whole chromosomes","PCR of every gene"],"A physical map of BACs anchored the assembly."],
+["gen1","Illumina sequencing uses reversible terminators. Why reversible?","So exactly one base is added per cycle, then the block is removed to allow the next",["To permanently stop chains like ddNTPs","To remove mismatches","To make the DNA double-stranded"],"Image the color, cleave the block and dye, repeat."],
+["gen1","Why is each Illumina spot amplified into a cluster?","The fluorescence from a single molecule is too faint to detect",["To make RNA","To remove introns","To create a PAM"],"Many identical copies give a strong signal."],
+["gen1","When would you choose nanopore over Illumina?","For very long reads or direct RNA sequencing without amplification",["When you need the lowest error rate","When you need the cheapest per-base cost","To sequence protein"],"Illumina is more accurate and cheaper per base."],
+["gen1","Which variant is MOST likely to cause a rare genetic disease?","A rare (<0.1%) change in a highly conserved coding region",["A common variant in a 3′ UTR","A third-codon-position change","A variant in a poorly conserved intron"],"Rare diseases are usually caused by rare variants, and conservation signals function."],
+["gen1","Illumina reads a new strand as 5′-ACGGT-3′. What's the template sequence (5′→3′)?","5′-ACCGT-3′",["5′-TGCCA-3′","5′-ACGGT-3′","5′-TGGCA-3′"],"The template is the reverse complement: complement (TGCCA), then reverse (ACCGT)."],
+["gen1","Developmental transcription factor genes often sit where?","In gene deserts surrounded by many conserved non-coding elements (enhancers)",["Inside other genes' introns only","On mitochondrial DNA","Next to telomeres"],"Lots of regulatory DNA means complex control of where and when they're on."],
+
+["gen3","Every cell in your body has the same genome. What makes a neuron different from a muscle cell?","Different genes are on, at different levels and times (gene regulation)",["Different DNA sequences","Neurons lack chromosomes","Muscle cells don't transcribe"],"Regulation depends on the cell's history, location, and signals."],
+["gen3","Which germ layer gives rise to neurons and skin?","Ectoderm",["Mesoderm","Endoderm","Notochord"],"Mesoderm: muscle, heart, blood. Endoderm: lung and gut lining."],
+["gen3","Housekeeping genes are what?","Genes expressed in nearly all cells for basic functions (e.g., transcription, translation)",["Genes only in liver","Genes that are always off","Pseudogenes"],"Compare: hemoglobin is on in red blood cell precursors only."],
+["gen3","An enhancer can be 100,000 bp from its gene. How does it act?","DNA looping brings it physically close to the promoter",["It's transcribed into the protein","It moves along the DNA","It works only on the opposite chromosome"],"Transcription factors bound at the enhancer contact the promoter complex."],
+["gen3","Genes in tightly packed (closed) chromatin are usually what?","Mostly off: inaccessible to transcription machinery",["Highly transcribed","Mutated","Deleted"],"Open chromatin is accessible, so its genes tend to be active."],
+["gen3","Which is an example of post-transcriptional regulation?","Controlling an mRNA's degradation rate",["Transcription factor binding to a promoter","Opening chromatin","DNA replication"],"Splicing and RNA stability act after transcription."],
+["gen3","Deleting the Shh limb enhancer (~1 Mb away) in mice causes what?","Stumps instead of limbs, even though the Shh gene itself is intact",["No change","Extra limbs","Death before birth from a coding mutation"],"Non-coding regulatory DNA can be essential. Enhancer point mutations cause polydactyly in humans."],
+["gen3","In bulk RNA-seq, how is mRNA separated from rRNA?","Poly(T) beads capture mRNA's poly(A) tail",["Restriction digest","Size on an agarose gel","Antibodies to ribosomes"],"Then reverse transcriptase makes cDNA, which is sequenced and counted."],
+["gen3","What is bulk RNA-seq's main limitation?","It averages expression over all the cell types in the sample",["It can't detect mRNA","It only reads DNA","It requires single cells"],"It's like a smoothie: you get the total but can't tell which fruit contributed what."],
+["gen3","In scRNA-seq, what does the cell barcode do?","Labels every cDNA from one cell (one bead) so reads can be grouped by cell",["Identifies each individual mRNA molecule","Captures the poly(A) tail","Primes PCR"],"The barcode is identical on all strands of one bead and unique per bead."],
+["gen3","In scRNA-seq, what does the UMI do?","Tags each captured molecule uniquely so PCR duplicates are counted once",["Marks which cell the read came from","Binds the poly(A) tail","Breaks the emulsion"],"It's random and different on every strand."],
+["gen3","If every scRNA-seq bead carried the same cell barcode, what would happen?","You couldn't tell cells apart, so it would be like bulk RNA-seq",["Nothing would change","You couldn't capture mRNA","You'd double the number of cells"],"The barcode is what links reads to individual cells."],
+["gen3","Which part of the bead oligo captures mRNA?","Poly(T)",["Cell barcode","UMI","PCR primer site"],"It base-pairs with the mRNA's poly(A) tail. Reverse transcriptase then extends it."],
+["gen3","What did scRNA-seq reveal about retinal bipolar cells?","There are ~14–16 types, not just 2 (ON/OFF)",["They don't express genes","They're identical to rods","They lack mRNA"],"Single-cell methods keep finding unexpected cell diversity."],
+["gen3","Two leukemias (ALL vs AML) look similar under the microscope. How can RNA-seq help?","Their different expression signatures classify them and guide treatment",["It sequences their proteins","It shows their chromosome number","It can't distinguish them"],"These are called molecular signatures."],
+["gen3","How is a sample's gene expression represented after RNA-seq?","A vector of counts, one per gene (~20,000 numbers)",["A single number","A protein sequence","A gel image"],"It's often visualized as a heat map."],
+
+["gen4","What are CRISPR spacers?","Short sequences matching DNA from phages that previously infected the bacterium",["Bacterial promoter sequences","Palindromic repeats","Cas protein genes"],"They're a genetic memory used to recognize the phage again."],
+["gen4","In the Danisco experiment, what was different about bacteria that survived phage infection?","They had acquired new spacers matching that phage",["They lost their CRISPR array","They had mutated Cas9","They stopped making tracrRNA"],"Adding or removing spacers changed resistance, which showed CRISPR is adaptive immunity."],
+["gen4","What role does tracrRNA play?","It pairs with the crRNA's repeat region and binds Cas9",["It matches the phage DNA","It cuts the DNA","It's the PAM"],"In the lab, crRNA and tracrRNA are fused into one sgRNA."],
+["gen4","Why doesn't Cas9 cut the bacterium's own CRISPR array, even though the spacer matches perfectly?","The array lacks the PAM sequence Cas9 needs next to the target",["The array is methylated","Cas9 only cuts RNA","The spacer is reversed in the array"],"No PAM, no cut. Phage DNA has the PAM."],
+["gen4","Cas9 + guide is targeted to a perfect match that has no adjacent PAM. Result?","No cut",["A double-strand break","A single-strand nick","The DNA is deleted"],"PAM recognition comes before cleavage."],
+["gen4","What kind of DNA damage does Cas9 make?","A double-strand break",["A single base substitution","A thymine dimer","Methylation"],"The cell's repair pathways then make the edit."],
+["gen4","NHEJ repair of a Cas9 cut usually produces what?","Small insertions or deletions (indels) at the cut",["A perfect restoration every time","A precise edit matching a template","A new spacer"],"It's fast and error-prone, with no template."],
+["gen4","You want to knock out a gene. What do you need?","Cas9 + an sgRNA targeting an early exon (NHEJ indels cause frameshifts)",["Cas9 + sgRNA + a repair template","dCas9 only","Reverse transcriptase"],"No template is needed. Error-prone repair does the damage."],
+["gen4","You want to correct a single-base disease mutation. What must you add besides Cas9 and sgRNA?","A DNA repair template with the correct base and homologous arms (HDR)",["Nothing more","A second sgRNA only","dCas9"],"HDR copies the template precisely into the break."],
+["gen4","What is an sgRNA?","A single RNA fusing crRNA (matches the target) and tracrRNA (binds Cas9)",["A ribosomal RNA","A spacer in the bacterial genome","A protein guide"],"Doudna & Charpentier's simplification (Nobel 2020)."],
+["gen4","Why is CRISPR called programmable?","Changing the ~20-nt guide sequence retargets Cas9 to (nearly) any site with a PAM",["Cas9 is rebuilt for each target","It works only on one gene","It's controlled by a computer"],"Only the RNA changes, not the protein."],
+["gen4","In a pooled CRISPR knockout screen for survival, which gRNAs are depleted from surviving cells?","Those targeting essential genes",["Those targeting non-essential genes","Those with no target","None: all stay equal"],"Cells that lost an essential gene died, so their guides disappear."],
+["gen4","What is dCas9?","A Cas9 that can't cut but still binds where the guide sends it",["A more active Cas9","Cas9 that cuts RNA","A DNA polymerase"],"Fused to chromatin openers or closers, it turns genes on or off without changing the sequence."],
+["gen4","Two Cas9 cuts flanking a region, repaired by NHEJ, can produce what?","A large deletion of the region between them",["A duplication of the guide","A precise point mutation","A new PAM"],"The ends are joined and the middle is lost."],
+["gen4","What do Cas genes encode?","The Cas proteins (nucleases) of the CRISPR system",["The spacers","The phage coat","Telomerase"],"They sit next to the CRISPR array."],
+["gen4","Combining a CRISPR screen with scRNA-seq lets you measure what?","How each knockout changes the expression of all genes",["Only which cells die","DNA sequence only","Protein structure"],"Hundreds to thousands of perturbations are read out across the transcriptome."]
+];
+
+/* ---------------- genetics helpers ---------------- */
+const B="TCAG", AAS="FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG";
+const AA3={F:"Phe",L:"Leu",S:"Ser",Y:"Tyr",C:"Cys",W:"Trp",P:"Pro",H:"His",Q:"Gln",R:"Arg",I:"Ile",M:"Met",T:"Thr",N:"Asn",K:"Lys",V:"Val",A:"Ala",D:"Asp",E:"Glu",G:"Gly","*":"Stop"};
+const CODE={}; for(let i=0;i<4;i++)for(let j=0;j<4;j++)for(let k=0;k<4;k++)CODE[B[i]+B[j]+B[k]]=AAS[16*i+4*j+k];
+const rnd=n=>Math.floor(Math.random()*n), pick=a=>a[rnd(a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const CMP={A:"T",T:"A",G:"C",C:"G"};
+const comp=s=>s.split("").map(c=>CMP[c]).join(""), rev=s=>s.split("").reverse().join(""), rc=s=>rev(comp(s));
+const randSeq=n=>Array.from({length:n},()=>pick("ACGT")).join("");
+const toU=s=>s.replace(/T/g,"U");
+const SENSE=Object.keys(CODE).filter(c=>CODE[c]!=="*");
+function translate(dna,i){const out=[];for(;i+3<=dna.length;i+=3){const a=CODE[dna.slice(i,i+3)];if(a==="*")break;out.push(AA3[a])}return out}
+const pep=a=>a.length?"N–"+a.join("–")+"–C":"(no protein)";
+const cleanSeq=v=>v.toUpperCase().replace(/5['′]|3['′]/g,"").replace(/[^ACGTU]/g,"");
+const spaced=(s,k=3)=>s.match(new RegExp(".{1,"+k+"}","g")).join(" ");
+function uniqOpts(correct,ds,filler){const set=[correct];for(const d of ds){if(d&&!set.includes(d)&&set.length<4)set.push(d)}let guard=0;while(set.length<4&&filler&&guard++<50){const f=filler();if(f&&!set.includes(f))set.push(f)}return set}
+
+/* ---------------- generators ---------------- */
+const GENS={
+revcomp:{u:"struct",name:"Complementary strand",make(){const s=randSeq(8+rnd(4));const ans=rc(s);return{type:"text",q:"Write the complementary strand, <b>5′→3′</b>.",code:"5′-"+s+"-3′",hint:"Letters only. Labels and spaces are ignored.",check(v){const c=cleanSeq(v);if(c===ans)return{ok:true};if(c===comp(s))return{ok:false,note:"You complemented but didn't reverse. That's the strand written 3′→5′."};if(c===rev(s))return{ok:false,note:"You reversed but didn't complement."};return{ok:false}},answer:"5′-"+ans+"-3′",e:"Pair each base (A–T, G–C), then reverse so it reads 5′→3′:\n5′-"+s+"-3′\n3′-"+comp(s)+"-5′  →  5′-"+ans+"-3′"}}},
+chargaff:{u:"struct",name:"Chargaff's rules",make(){const bases="ATGC";const x=pick(bases);let y=pick(bases);while(y===x)y=pick(bases);const p=5+rnd(40);const pair={A:"T",T:"A",G:"C",C:"G"};const ans=pair[x]===y?p:50-p;return{type:"text",q:`Double-stranded DNA is <b>${p}% ${x}</b>. What percent is <b>${y}</b>?`,hint:"Enter a number.",check(v){const n=parseFloat(String(v).replace(/[^0-9.]/g,""));return{ok:n===ans}},answer:ans+"%",e:pair[x]===y?`${x} pairs with ${y}, so ${y} = ${x} = ${p}%.`:`${x} = ${pair[x]} = ${p}%. The other pair splits the rest: (100 − 2×${p})/2 = ${50-p}% each. ${y} = ${ans}%.`}}},
+meselson:{u:"repl",name:"Meselson–Stahl bands",make(){const g=1+rnd(3);const startHeavy=Math.random()<.7;const oldN=startHeavy?"heavy":"light",newN=startHeavy?"light":"heavy";const fr={1:"all",2:"½",4:"¼",8:"⅛"},rest={2:"½",4:"¾",8:"⅞"};const d=2**g;
+ const semi=g===1?"One band: hybrid":`${fr[d/2]} hybrid + ${rest[d/2]} ${newN}`;
+ const cons=`${fr[d]} ${oldN} + ${rest[d]} ${newN}`;
+ const disp=g===1?"One band: hybrid":`One band, ${fr[d]} of the way from ${newN} to ${oldN} (between hybrid and ${newN})`;
+ const wrongIso=g===1?`½ hybrid + ½ ${oldN}`:`${fr[d/2]} hybrid + ${rest[d/2]} ${oldN}`;
+ const model=pick(["semi-conservative","semi-conservative","conservative","dispersive"]);
+ const truth={"semi-conservative":semi,"conservative":cons,"dispersive":disp}[model];
+ const opts=uniqOpts(truth,[semi,cons,disp,wrongIso,`All ${oldN}`],()=>`All ${newN}`);
+ return{type:"mc",q:`Cells grown many generations in <b>${startHeavy?"¹⁵N (heavy)":"¹⁴N (light)"}</b> are switched to <b>${startHeavy?"¹⁴N (light)":"¹⁵N (heavy)"}</b>. After <b>${g} generation${g>1?"s":""}</b>, what would a <b>${model}</b> model predict?`,opts,correct:truth,e:`Semi-conservative: the 2 original strands persist in 2 hybrid molecules out of 2^${g} = ${d}; the rest are ${newN}. Conservative: 1 original ${oldN} helix out of ${d}. Dispersive: every molecule is ${fr[d]==="all"?"half":fr[d]} old, so there's one band that drifts toward ${newN}.`}}},
+transcribe:{u:"tx",name:"Write the mRNA",make(){const top=randSeq(12+rnd(3));const tmpl=pick(["top","bottom"]);const ans=toU(tmpl==="bottom"?top:rc(top));return{type:"text",q:`The <b>${tmpl}</b> strand is the template. Write the mRNA, <b>5′→3′</b>.`,code:"5′-"+top+"-3′\n3′-"+comp(top)+"-5′",hint:"Use U, not T.",check(v){const c=cleanSeq(v);if(c===ans)return{ok:true};if(c===rev(ans))return{ok:false,note:"Right bases, wrong direction. You wrote it 3′→5′."};if(c.replace(/U/g,"T")===ans.replace(/U/g,"T"))return{ok:false,note:"Right sequence, but RNA uses U, not T."};if(c===toU(tmpl==="bottom"?comp(top):top))return{ok:false,note:"That's the template's own sequence. The mRNA is complementary to the template."};return{ok:false}},answer:"5′-"+ans+"-3′",e:`mRNA is complementary and antiparallel to the template, so it matches the coding (${tmpl==="bottom"?"top":"bottom"}) strand with U for T.${tmpl==="top"?" The coding strand is the bottom; read it right to left to go 5′→3′.":""}`}}},
+translate:{u:"tx",name:"DNA → protein",make(){let coding,variant;for(let t=0;t<300;t++){const utr=randSeq(3+rnd(3));if((utr+"ATG").indexOf("ATG")!==utr.length)continue;let body="";const n=3+rnd(3);for(let i=0;i<n;i++)body+=pick(SENSE);coding=utr+"ATG"+body+pick(["TAA","TAG","TGA"])+randSeq(2+rnd(3));variant=pick(["mrna","tmpl","find"]);if(variant==="find"&&rc(coding).includes("ATG"))continue;break}
+ const st=coding.indexOf("ATG");const right=pep(translate(coding,st));
+ const flip=Math.random()<.5;const top=flip?rc(coding):coding;
+ let q,code;
+ if(variant==="mrna"){q="Translate this mRNA. Which protein is made?";code="5′-"+toU(coding)+"-3′"}
+ else{code="5′-"+top+"-3′\n3′-"+comp(top)+"-5′";q=variant==="tmpl"?`The <b>${flip?"top":"bottom"}</b> strand is the template. Which protein is made?`:"Neither strand is labeled. Find the coding strand and give the protein."}
+ const ds=[pep(translate(coding,0)),pep(translate(coding,st+1)),pep(translate(rc(coding),0)),pep(translate(comp(coding),st))];
+ const opts=uniqOpts(right,ds,()=>{const a=translate(coding,st);if(a.length<2)return null;a[1+rnd(a.length-1)]=AA3[CODE[pick(SENSE)]];return pep(a)});
+ return{type:"mc",mono:true,q,code,opts,correct:right,e:`Coding strand read 5′→3′: ${coding.slice(0,st)} | ${spaced(coding.slice(st))}\nStart at the first ATG (AUG) and read triplets until the stop.`}}},
+anticodon:{u:"tx",name:"Codon → anticodon",make(){const c=toU(pick(SENSE));const anti=toU(comp(c.replace(/U/g,"T")));const as53=Math.random()<.5;const right=as53?"5′-"+rev(anti)+"-3′":"3′-"+anti+"-5′";const ds=as53?["5′-"+anti+"-3′","5′-"+c+"-3′","5′-"+rev(anti).replace(/U/g,"T")+"-3′"]:["5′-"+anti+"-3′","3′-"+c+"-5′","3′-"+anti.replace(/U/g,"T")+"-5′"];return{type:"mc",mono:true,q:`Which tRNA anticodon pairs with codon <code>5′-${c}-3′</code>? (written ${as53?"5′→3′":"3′→5′"})`,opts:uniqOpts(right,ds),correct:right,e:`Pair antiparallel: 5′-${c}-3′ over 3′-${anti}-5′. Written 5′→3′ that's 5′-${rev(anti)}-3′. RNA uses U.`}}},
+mutation:{u:"tx",name:"Classify a point mutation",make(){const c=pick(SENSE),pos=rnd(3);const m=c.slice(0,pos)+pick("ACGT".replace(c[pos],""))+c.slice(pos+1);const a1=CODE[c],a2=CODE[m];const kind=a2==="*"?"Nonsense":a1===a2?"Synonymous (silent)":"Missense";const useT=Math.random()<.35;const q=useT?`On the <b>template</b> strand, the triplet <code>3′-${comp(c)}-5′</code> becomes <code>3′-${comp(m)}-5′</code>. What type of mutation is this?`:`On the <b>coding</b> strand, codon <code>5′-${c}-3′</code> becomes <code>5′-${m}-3′</code>. What type of mutation is this?`;return{type:"mc",q,opts:["Synonymous (silent)","Missense","Nonsense","Frameshift"],fixed:true,correct:kind,e:`mRNA codon ${toU(c)} (${AA3[a1]}) → ${toU(m)} (${AA3[a2]}).${useT?" Convert the template to the coding strand by complementing it.":""} Use the codon table.`}}},
+digest:{u:"clone",name:"Restriction digest sizes",make(){const circ=Math.random()<.6;const L=(8+rnd(9))/1;const n=1+rnd(3);const cuts=new Set();while(cuts.size<n){cuts.add((1+rnd(L*2-1))/2)}const p=[...cuts].sort((a,b)=>a-b);const sizes=[];if(circ){for(let i=0;i<p.length;i++){const nx=i+1<p.length?p[i+1]:p[0]+L;sizes.push(+(nx-p[i]).toFixed(1))}}else{let prev=0;for(const x of p){sizes.push(+(x-prev).toFixed(1));prev=x}sizes.push(+(L-prev).toFixed(1))}
+ const fmt=a=>a.slice().sort((x,y)=>y-x).join(" + ")+" kb";
+ const linearThink=[];{let prev=0;for(const x of p){linearThink.push(+(x-prev).toFixed(1));prev=x}linearThink.push(+(L-prev).toFixed(1))}
+ const circThink=[];for(let i=0;i<p.length;i++){const nx=i+1<p.length?p[i+1]:p[0]+L;circThink.push(+(nx-p[i]).toFixed(1))}
+ const right=fmt(sizes);const ds=[fmt(circ?linearThink:circThink),fmt([L]),fmt(sizes.map((s,i)=>i===0?+(s+0.5).toFixed(1):s))];
+ return{type:"mc",mono:true,q:`A <b>${circ?"circular plasmid":"linear DNA molecule"}</b> of <b>${L} kb</b> has EcoRI sites at ${p.map(x=>x+" kb").join(", ")}${circ?" (positions measured around the circle from an arbitrary 0)":" (from the left end)"}. Complete EcoRI digest: which fragments?`,opts:uniqOpts(right,ds,()=>fmt(sizes.map(s=>+(s+(Math.random()<.5?.5:-.5)).toFixed(1)).filter(s=>s>0))),correct:right,e:`${circ?"Circular: n cuts → n fragments. The last fragment wraps around from the final site back to the first.":"Linear: n cuts → n+1 fragments."} Check that the fragments add up to ${L} kb.`}}},
+sites:{u:"clone",name:"Find the EcoRI sites",make(){let s;let count;for(let t=0;t<100;t++){s=randSeq(36).split("");const k=1+rnd(2);for(let i=0;i<k;i++){const at=rnd(30);s.splice(at,6,..."GAATTC")}s=s.join("").slice(0,36);count=(s.match(/GAATTC/g)||[]).length;if(count>=1)break}const askFrag=Math.random()<.5;const ans=askFrag?count+1:count;return{type:"text",q:askFrag?"EcoRI cuts at <code>G^AATTC</code>. How many fragments does a complete digest of this <b>linear</b> DNA give?":"How many EcoRI sites (<code>GAATTC</code>) are in this sequence?",code:"5′-"+s.replace(/(.{12})/g,"$1 ").trim()+"-3′",hint:"Enter a number. (GAATTC is palindromic, so checking one strand is enough.)",check(v){return{ok:parseInt(v,10)===ans}},answer:String(ans),e:`Sites found: ${count}. ${askFrag?"Linear DNA: sites + 1 = "+(count+1)+" fragments.":""}`}}},
+primer:{u:"seq",name:"Pick the PCR primers",make(){const L=randSeq(8),R=randSeq(8),k=6;const Fc=L.slice(-k),Rr=R.slice(0,k);const sets=[["5′-"+Fc+"-3′","5′-"+rc(Rr)+"-3′"],["5′-"+Fc+"-3′","5′-"+Rr+"-3′"],["5′-"+rc(Fc)+"-3′","5′-"+Rr+"-3′"],["5′-"+comp(Fc)+"-3′","5′-"+comp(Rr)+"-3′"]].map(s=>s.join("  and  "));const right=sets[0];return{type:"mc",mono:true,q:"You want to amplify the region between these flanks. Which primer pair works? (6-nt primers, written 5′→3′)",code:`5′-${L}··········${R}-3′\n3′-${comp(L)}··········${comp(R)}-5′`,opts:uniqOpts(right,sets.slice(1)),correct:right,e:`Forward = the top strand's own sequence at the left flank (${Fc}); it binds the bottom strand with its 3′ end pointing right.\nReverse = the reverse complement of the top's right flank (${Rr} → ${rc(Rr)}); it binds the top strand with its 3′ end pointing left.`}}},
+sanger:{u:"seq",name:"Sanger products",make(){const base=pick("ACGT");let t,news;for(let i=0;i<100;i++){t=randSeq(10);news=comp(t);const c=news.split("").filter(x=>x===base).length;if(c>=2&&c<=4)break}const pr=randSeq(3);const tmpl=comp(pr)+t;const lens=[],tl=[],nol=[];news.split("").forEach((x,i)=>{if(x===base){lens.push(4+i);nol.push(i+1)}});t.split("").forEach((x,i)=>{if(x===base)tl.push(4+i)});
+ const variant=Math.random()<.5;
+ if(variant){const right=lens.join(", ")+" nt";const ds=[tl.length?tl.join(", ")+" nt":"",nol.join(", ")+" nt",lens.map(x=>x-1).join(", ")+" nt"];return{type:"mc",mono:true,q:`Template (read by polymerase) <code>3′-${tmpl}-5′</code>. Primer <code>5′-${pr}-3′</code> anneals to its first 3 bases. The reaction includes all dNTPs plus <b>dd${base}TP</b>. What are the product lengths (including the primer)?`,opts:uniqOpts(right,ds,()=>lens.map(x=>x+1).join(", ")+" nt"),correct:right,e:`New strand: 5′-${pr} ${news}-3′. It terminates wherever an ${base} is added to the NEW strand: positions ${lens.join(", ")} (counting the 3 primer bases).`}}
+ const s=randSeq(8);const lanes={A:[],C:[],G:[],T:[]};s.split("").forEach((x,i)=>lanes[x].push(i+1));const askT=Math.random()<.6;const right="5′-"+(askT?rc(s):s)+"-3′";const ds=askT?["5′-"+s+"-3′","5′-"+comp(s)+"-3′","5′-"+rev(s)+"-3′"]:["5′-"+rc(s)+"-3′","5′-"+rev(s)+"-3′","5′-"+comp(s)+"-3′"];return{type:"mc",mono:true,q:`Sanger gel, band sizes (bases added after the primer) in each ddNTP lane:<br>Read the sequence of the <b>${askT?"TEMPLATE":"newly synthesized"}</b> strand, 5′→3′.`,code:"ddA: "+(lanes.A.join(", ")||"–")+"\nddC: "+(lanes.C.join(", ")||"–")+"\nddG: "+(lanes.G.join(", ")||"–")+"\nddT: "+(lanes.T.join(", ")||"–"),opts:uniqOpts(right,ds),correct:right,e:`Read smallest → largest: new strand 5′-${s}-3′. ${askT?"The template is its reverse complement: 5′-"+rc(s)+"-3′.":""}`}}},
+pcr:{u:"seq",name:"PCR copy math",make(){const k=pick([1,1,2,3,4,10]);const n=3+rnd(8);const ans=k*2**n;return{type:"text",q:`You start with <b>${k}</b> double-stranded template molecule${k>1?"s":""} and run <b>${n}</b> ideal PCR cycles. How many double-stranded copies of the target?`,hint:"Enter a number.",check(v){return{ok:parseInt(String(v).replace(/[^0-9]/g,""),10)===ans}},answer:String(ans),e:`${k} × 2^${n} = ${ans}. Each cycle doubles the number.`}}}
+};
+
+/* ---------------- state ---------------- */
+const KEY="cda-v1";
+let S={xp:0,best:0,q:{},g:{}};
+try{const raw=localStorage.getItem(KEY);if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const QI=Q.map((r,i)=>({id:"q"+i,u:r[0],q:r[1],c:r[2],w:r[3],e:r[4]}));
+const unitName=id=>(UNITS.find(u=>u.id===id)||{}).name||id;
+const qMastered=id=>{const r=S.q[id];return r&&r.last===1&&(r.c>=2||r.w===0)};
+const gMastered=id=>{const r=S.g[id];return r&&r.best>=3};
+function unitItems(u){return QI.filter(x=>x.u===u).map(x=>({kind:"q",ref:x})).concat(Object.keys(GENS).filter(g=>GENS[g].u===u).map(g=>({kind:"g",ref:g})))}
+function itemMastered(it){return it.kind==="q"?qMastered(it.ref.id):gMastered(it.ref)}
+function itemWeight(it){if(it.kind==="q"){const r=S.q[it.ref.id];if(!r)return 3;if(r.last===0)return 6;return qMastered(it.ref.id)?.6:2}const r=S.g[it.ref];if(!r)return 3;if(r.streak===0&&r.w>0)return 5;return gMastered(it.ref)?1:2.5}
+const LEVELS=["Free nucleotide","Primer","Okazaki fragment","Leading strand","Replication fork","Plasmid","Ribosome","Spliceosome","Telomerase","Cas9","Meselson & Stahl","Watson & Crick","Exam slayer"];
+const level=()=>Math.min(LEVELS.length,Math.floor(Math.sqrt(S.xp/60))+1);
+
+function renderStats(){const all=Object.keys(GENS).length+QI.length;const m=QI.filter(x=>qMastered(x.id)).length+Object.keys(GENS).filter(gMastered).length;
+ document.getElementById("stats").innerHTML=`<span class="chip">Lv <b>${level()}</b> · ${LEVELS[level()-1]}</span><span class="chip"><b>${S.xp}</b> XP</span><span class="chip">Mastered <b>${m}</b>/${all}</span><span class="chip">Best streak <b>${S.best}</b></span>`}
+
+/* ---------------- play screen ---------------- */
+const MODES=[
+ {id:"mixed",tag:"Recommended",name:"Mixed run",desc:"20 items from everything, weighted toward what you miss and haven't seen."},
+ {id:"boss",tag:"Exam sim",name:"Boss exam",desc:"30 items across all 10 units, about a third of them sequence drills. Scored at the end."},
+ {id:"missed",tag:"Fix weak spots",name:"Missed pile",desc:"Only the items you got wrong last time. Clear it to zero."},
+ {id:"blitz",tag:"Quick",name:"Sequence blitz",desc:"15 generated problems: complements, mRNA, translation, primers, Sanger, digests."}];
+function renderPlay(){renderStats();
+ document.getElementById("modes").innerHTML=MODES.map(m=>{let extra="";if(m.id==="missed"){const n=missedPool().length;extra=` <span class="tag" style="color:var(--muted)">${n} waiting</span>`}return`<button class="mode" data-mode="${m.id}"><span class="tag">${m.tag}</span><strong>${m.name}${extra}</strong><span>${m.desc}</span></button>`}).join("");
+ document.getElementById("units").innerHTML=UNITS.map(u=>{const its=unitItems(u.id);const m=its.filter(itemMastered).length;const bands=12,on=Math.round(bands*m/its.length);return`<div class="unit"><div><h3>${u.name}</h3><div class="src">${u.src}</div></div><div class="gel" aria-label="${m} of ${its.length} mastered">${Array.from({length:bands},(_,i)=>`<i class="${i<on?"on":""}"></i>`).join("")}</div><div class="urow"><span>${m}/${its.length} mastered</span><span style="display:flex;gap:6px"><button class="btn ghost" data-study="${u.id}">Study</button><button class="btn primary" data-unit="${u.id}">Play</button></span></div></div>`}).join("");
+ document.getElementById("skills").innerHTML=Object.entries(GENS).map(([k,g])=>{const r=S.g[k];return`<button class="skill" data-skill="${k}"><span>${g.name}</span><small>${r?(gMastered(k)?"★ ":"")+"best "+r.best:"new"}</small></button>`}).join("")}
+function missedPool(){return QI.filter(x=>S.q[x.id]&&S.q[x.id].last===0).map(x=>({kind:"q",ref:x})).concat(Object.keys(GENS).filter(g=>S.g[g]&&S.g[g].streak===0&&S.g[g].w>0).map(g=>({kind:"g",ref:g})))}
+function weightedSample(pool,n,{genMax=3}={}){const out=[],used=new Set(),gcount={};let guard=0;while(out.length<n&&guard++<5000){const avail=pool.filter(it=>it.kind==="g"?(gcount[it.ref]||0)<genMax:!used.has(it.ref.id));if(!avail.length)break;const tot=avail.reduce((s,it)=>s+itemWeight(it),0);let r=Math.random()*tot,ch=avail[0];for(const it of avail){r-=itemWeight(it);if(r<=0){ch=it;break}}if(ch.kind==="g")gcount[ch.ref]=(gcount[ch.ref]||0)+1;else used.add(ch.ref.id);out.push(ch)}return out}
+const ALL=()=>UNITS.flatMap(u=>unitItems(u.id));
+function startRun(mode,arg){let items,title;
+ if(mode==="unit"){items=weightedSample(unitItems(arg),12,{genMax:3});title=unitName(arg)}
+ else if(mode==="skill"){items=Array.from({length:10},()=>({kind:"g",ref:arg}));title="Skill lab · "+GENS[arg].name}
+ else if(mode==="mixed"){items=weightedSample(ALL(),20,{genMax:2});title="Mixed run"}
+ else if(mode==="blitz"){items=Array.from({length:15},()=>({kind:"g",ref:pick(Object.keys(GENS))}));title="Sequence blitz"}
+ else if(mode==="boss"){const gens=Object.keys(GENS);const qs=shuffle(UNITS.flatMap(u=>shuffle(QI.filter(x=>x.u===u.id)).slice(0,2).map(x=>({kind:"q",ref:x}))));items=shuffle(qs.slice(0,20).concat(Array.from({length:10},()=>({kind:"g",ref:pick(gens)}))));title="Boss exam"}
+ else if(mode==="missed"){items=shuffle(missedPool()).slice(0,25);title="Missed pile";if(!items.length){toast("Nothing in the missed pile. Play a run first, or you've cleared it.");return}}
+ R={mode,arg,title,items,i:0,score:0,streak:0,missed:[],xp0:S.xp,answered:false};show("quiz");nextQ()}
+let R=null,CUR=null;
+
+/* ---------------- quiz ---------------- */
+function build(it){if(it.kind==="q"){const x=it.ref;const opts=shuffle([x.c,...x.w]);return{type:"mc",q:x.q,opts,correct:x.c,e:x.e,u:x.u,item:it}}const g=GENS[it.ref];const o=g.make();o.u=g.u;o.item=it;o.gname=g.name;if(o.type==="mc"&&!o.fixed)o.opts=shuffle(o.opts);return o}
+function nextQ(){if(R.i>=R.items.length)return endRun();CUR=build(R.items[R.i]);R.answered=false;
+ document.getElementById("qmeta").textContent=`${R.title} · ${R.i+1}/${R.items.length} · score ${R.score} · streak ${R.streak}`;
+ document.getElementById("qbar").style.width=(100*R.i/R.items.length)+"%";
+ const c=document.getElementById("qcard");
+ let h=`<div class="qunit">${unitName(CUR.u)}${CUR.gname?" · drill: "+CUR.gname:""}</div><p class="qtext">${CUR.q}</p>`;
+ if(CUR.code)h+=`<pre class="seq">${CUR.code}</pre>`;
+ if(CUR.type==="mc")h+=`<div class="opts">${CUR.opts.map((o,i)=>`<button class="opt${CUR.mono?" mono":""}" data-i="${i}"><kbd>${i+1}</kbd><span class="t">${o}</span></button>`).join("")}</div>`;
+ else h+=`<div class="tin"><input id="tin" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Your answer"><button class="btn primary" id="tsub">Check</button></div><div class="hint">${CUR.hint||""}</div><div class="err" id="terr" hidden></div>`;
+ h+=`<div id="fb"></div><div class="actions"><button class="btn ghost" id="ctog">Codon table</button><button class="btn primary" id="next" hidden>Next →</button></div><div id="cbox" class="ctoggle tblwrap" hidden></div>`;
+ c.innerHTML=h;
+ if(CUR.type==="text"){const inp=document.getElementById("tin");inp.focus();inp.addEventListener("input",()=>{document.getElementById("terr").hidden=true})}}
+function record(ok){const it=CUR.item;if(it.kind==="q"){const r=S.q[it.ref.id]||{c:0,w:0,last:null};ok?r.c++:r.w++;r.last=ok?1:0;S.q[it.ref.id]=r}else{const r=S.g[it.ref]||{c:0,w:0,streak:0,best:0};if(ok){r.c++;r.streak++;r.best=Math.max(r.best,r.streak)}else{r.w++;r.streak=0}S.g[it.ref]=r}
+ if(ok){R.score++;R.streak++;S.xp+=10+Math.min(R.streak,10);S.best=Math.max(S.best,R.streak)}else{R.streak=0;R.missed.push(CUR)}save()}
+function answerMC(i){if(R.answered)return;R.answered=true;const chosen=CUR.opts[i];const ok=chosen===CUR.correct;CUR.yours=chosen;record(ok);
+ document.querySelectorAll(".opt").forEach((b,j)=>{b.disabled=true;if(CUR.opts[j]===CUR.correct)b.classList.add("right");else if(j===i)b.classList.add("wrong")});feedback(ok,null)}
+function answerText(){if(R.answered)return;const v=document.getElementById("tin").value;if(!v.trim()){const e=document.getElementById("terr");e.textContent="Enter an answer first.";e.hidden=false;return}R.answered=true;const res=CUR.check(v);CUR.yours=v;record(res.ok);document.getElementById("tin").disabled=true;document.getElementById("tsub").disabled=true;feedback(res.ok,res.note)}
+const PRAISE=["Correct.","Nailed it.","Yes.","Exactly.","Clean."];
+function feedback(ok,note){const ans=CUR.type==="text"?`<p><b>Answer:</b> <code>${CUR.answer}</code></p>`:(ok?"":`<p><b>Answer:</b> ${CUR.correct}</p>`);
+ document.getElementById("fb").innerHTML=`<div class="fb ${ok?"ok":"no"}"><h4>${ok?pick(PRAISE):"Not quite."}</h4>${note?`<p>${note}</p>`:""}${ans}${/\n/.test(CUR.e)?`<pre>${CUR.e}</pre>`:`<p>${CUR.e}</p>`}</div>`;
+ document.getElementById("next").hidden=false;document.getElementById("next").focus();
+ document.getElementById("qmeta").textContent=`${R.title} · ${R.i+1}/${R.items.length} · score ${R.score} · streak ${R.streak}`;renderStats()}
+function endRun(){const n=R.items.length,pct=Math.round(100*R.score/n);show("end");renderStats();
+ const el=document.getElementById("v-end");
+ el.innerHTML=`<div class="card"><div class="qunit">${R.title} complete</div><div class="endnum">${R.score}/${n}</div><p class="sub" style="margin-top:8px">${pct}% · +${S.xp-R.xp0} XP · level ${level()} (${LEVELS[level()-1]})</p><div class="actions" style="justify-content:flex-start"><button class="btn primary" id="again">Play again</button><button class="btn" id="tomissed">Missed pile</button><button class="btn ghost" id="home">Back to units</button></div></div>
+ ${R.missed.length?`<h2 style="margin-top:24px">Review what you missed</h2><div class="missed">${R.missed.map(m=>`<div class="card"><div class="qunit">${unitName(m.u)}</div><p>${m.q}</p>${m.code?`<pre class="seq">${m.code}</pre>`:""}<p class="no-t">Yours: ${escapeHTML(String(m.yours||""))}</p><p class="ok-t">Answer: ${m.type==="text"?m.answer:m.correct}</p>${/\n/.test(m.e)?`<pre class="seq" style="color:var(--fg)">${m.e}</pre>`:`<p>${m.e}</p>`}</div>`).join("")}</div>`:`<p class="sub" style="margin-top:16px">No misses. Try the boss exam.</p>`}`}
+const escapeHTML=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+/* ---------------- study list ---------------- */
+function renderStudy(){const el=document.getElementById("study");
+ el.innerHTML=UNITS.map(u=>{const its=unitItems(u.id);const m=its.filter(itemMastered).length;return`<details class="sec" id="s-${u.id}"><summary><div><h3>${u.name}</h3><div class="src">${u.src}</div></div><span class="chip">${m}/${its.length}</span></summary><div class="secbody">${u.sections.map(([h,ls])=>`<h4>${h}</h4><ul>${ls.map(l=>`<li>${l}</li>`).join("")}</ul>`).join("")}<div style="margin-top:14px"><button class="btn primary" data-unit="${u.id}">Play this unit</button></div></div></details>`}).join("")
+ +`<details class="sec" id="s-traps" open><summary><div><h3>Exam traps (read last)</h3><div class="src">cross-cutting</div></div></summary><div class="secbody"><ul>${TRAPS.map(t=>`<li>${t}</li>`).join("")}</ul></div></details>`;}
+function applyFilter(){const q=document.getElementById("filter").value.trim().toLowerCase();document.querySelectorAll("#study details.sec").forEach(d=>{let any=false;d.querySelectorAll("li").forEach(li=>{if(!li.dataset.orig)li.dataset.orig=li.innerHTML;li.innerHTML=li.dataset.orig;const hit=!q||li.textContent.toLowerCase().includes(q);li.hidden=!hit;if(hit&&q){any=true;li.innerHTML=highlight(li.dataset.orig,q)}});d.querySelectorAll("h4").forEach(h=>{const ul=h.nextElementSibling;h.hidden=q&&![...ul.children].some(li=>!li.hidden)});d.hidden=q&&!any;if(q&&any)d.open=true})}
+function highlight(html,q){const esc=q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");return html.replace(/(<[^>]+>)|([^<]+)/g,(m,tag,txt)=>tag?tag:txt.replace(new RegExp("("+esc+")","gi"),"<mark>$1</mark>"))}
+
+/* ---------------- codon table ---------------- */
+function codonTable(){const N="UCAG";let h=`<table class="codon"><tr><th></th>${[...N].map(b=>`<th>${b}</th>`).join("")}</tr>`;for(const a of N){h+=`<tr><th>${a}</th>`;for(const b of N){h+="<td>"+[...N].map(c=>{const cod=a+b+c,aa=CODE[(cod).replace(/U/g,"T")];const cls=aa==="*"?"stop":cod==="AUG"?"start":"";return`<div class="${cls}">${cod} ${AA3[aa]}</div>`}).join("")+"</td>"}h+="</tr>"}return h+"</table>"}
+
+/* ---------------- views + events ---------------- */
+function show(v){["play","quiz","end","study","codons"].forEach(x=>document.getElementById("v-"+x).hidden=x!==v);const tab=v==="quiz"||v==="end"?"play":v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===tab));if(v==="play")renderPlay();if(v==="study")renderStudy();window.scrollTo(0,0)}
+function toast(msg){const el=document.createElement("div");el.textContent=msg;el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:10px 16px;border-radius:8px;z-index:20;max-width:90vw";document.body.appendChild(el);setTimeout(()=>el.remove(),2600)}
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+ if(t.matches("nav button")){show(t.dataset.v);return}
+ if(t.dataset.mode)return startRun(t.dataset.mode);
+ if(t.dataset.unit)return startRun("unit",t.dataset.unit);
+ if(t.dataset.skill)return startRun("skill",t.dataset.skill);
+ if(t.dataset.study){show("study");const d=document.getElementById("s-"+t.dataset.study);if(d){d.open=true;d.scrollIntoView({block:"start"})}return}
+ if(t.classList.contains("opt"))return answerMC(+t.dataset.i);
+ if(t.id==="tsub")return answerText();
+ if(t.id==="next"){R.i++;return nextQ()}
+ if(t.id==="ctog"){const b=document.getElementById("cbox");if(!b.innerHTML)b.innerHTML=codonTable();b.hidden=!b.hidden;return}
+ if(t.id==="quit"){R.items=R.items.slice(0,R.i+(R.answered?1:0));if(!R.items.length){show("play");return}return endRun()}
+ if(t.id==="again")return startRun(R.mode,R.arg);
+ if(t.id==="tomissed")return startRun("missed");
+ if(t.id==="home")return show("play");
+ if(t.id==="expand"){document.querySelectorAll("#study details").forEach(d=>d.open=true);return}
+ if(t.id==="collapse"){document.querySelectorAll("#study details").forEach(d=>d.open=false);return}
+ if(t.id==="reset"){document.getElementById("resetConfirm").hidden=false;return}
+ if(t.id==="resetNo"){document.getElementById("resetConfirm").hidden=true;return}
+ if(t.id==="resetYes"){S={xp:0,best:0,q:{},g:{}};save();document.getElementById("resetConfirm").hidden=true;renderPlay();toast("Progress erased.");return}
+});
+document.addEventListener("keydown",e=>{if(document.getElementById("v-quiz").hidden)return;
+ if(e.key==="Enter"){if(document.activeElement&&document.activeElement.tagName==="BUTTON")return;if(R.answered){e.preventDefault();R.i++;nextQ()}else if(CUR.type==="text"&&document.activeElement.id==="tin"){e.preventDefault();answerText()}return}
+ if(CUR&&CUR.type==="mc"&&!R.answered&&/^[1-4]$/.test(e.key)){const i=+e.key-1;if(i<CUR.opts.length)answerMC(i)}});
+document.getElementById("filter").addEventListener("input",applyFilter);
+document.getElementById("codonTable").innerHTML=codonTable();
+renderPlay();
+</script>
+
+</body></html>
